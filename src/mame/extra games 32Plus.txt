@@ -1,0 +1,226 @@
+/* EXTRA GAMES */
+	DRIVER( stapper )       /* Tapper Simpsons Hack */
+	DRIVER( stapper1 )      /* Tapper Simpsons Hack ver .81 */
+	DRIVER( phoenixg )	/* Hack Greek */
+	DRIVER( phoenix2 )
+	DRIVER( phoenix4 )
+	DRIVER( phoenixr )
+	DRIVER( pleiads2 )
+	DRIVER( pcktgalg )      /* Pocket Gal (Greek) */ 
+	DRIVER( wbmlbit )       /* Wonder Boy in Monster Land (Italian Lang ver. 0.99 by Michele) */
+	DRIVER( volfiedg )	/* Hack Greek */
+	DRIVER( bombjacg )	/* Hack Greek */
+	DRIVER( powernbr )
+//	DRIVER( shogware )
+	DRIVER( airwofr )
+	DRIVER( altbstfr )
+	DRIVER( baddudfr )
+	DRIVER( bublbofr )
+	DRIVER( evilstfr )
+	DRIVER( blkdrgnk )
+	DRIVER(	bombjred )
+
+	
+/* CPS 1 */
+	DRIVER( pnicku )        /* 1994 */
+        DRIVER( hwofa )         /* 1992 */
+	DRIVER( hwofah ) 	/* Sangokushi II (Asia)(Hack set 2) */
+	DRIVER( knights2 )	/* Knights of the Round (hack set 2) */
+	DRIVER( dynwarjh )	/* Tenchi wo Kurau (Japan)(Hack set 1) */
+	DRIVER( dynwrj2 )	/* Tenchi wo Kurau (Japan)(Hack set 1) */
+	DRIVER( wofjh )		/* Tenchi wo Kurau II - Sekiheki no Tatakai (Japan Hack) */
+	DRIVER( sf2cebr )	/* hack */
+	DRIVER( sf2turyu )	/* hack */
+	DRIVER( sf2ceh )	/* hack */
+	DRIVER( captcomh )	/* hack */	
+	DRIVER( punisrjh )	/* hack */
+	DRIVER( punishrb )	/* hack */	
+
+
+/* CPS CHANGER */
+	DRIVER( sfzch )		/* CPS Changer (Street Fighter ZERO) */		
+	DRIVER( sfach )	
+	DRIVER( sfzbch )	/* hack */
+	
+
+/* CPS 2 */
+	DRIVER( suicide ) 
+	DRIVER( csclubjr )	/* 22/07/1997 (c) 1997 (Japan, rent) */
+	
+
+/* IGS PGM System */
+	DRIVER( orlgndcs )      /* "Hack","Oriental Legend / Xi Yo Gi Shi Re Zuang (Hack) */
+	DRIVER( kovplusq )
+	DRIVER( kovshq )
+	DRIVER( orlegndh )
+	DRIVER( kov2psv )
+
+
+/* Jaleco games */	
+	DRIVER( exeriong )	/* Hack Greek */
+
+
+/* Konami games */
+	DRIVER( athe2004 )	/* GX361 (c) 1983 */
+	DRIVER( amidarg )	/* Hack Greek */
+	DRIVER( amidarfr )
+
+
+/* Midway T-unit system */
+	DRIVER( mkfr )
+	DRIVER( mk2fr )
+
+	
+/* Tehkan */
+	DRIVER( thkanwcg )	/* Hack Greek */
+
+
+/* Tempest */
+	DRIVER( vortex )  	/* Atari "Vortex" */
+	DRIVER( vortexa )   	/* Atari "Vortex alt version" */
+	DRIVER( aliensv )  	/* Atari "Aliens */
+	DRIVER( aliensva )  	/* Atari "Aliens alt version */ 
+
+/* Toaplan 2 */
+	DRIVER( mahoudcn ) 
+
+
+/* Neo Geo games */	
+	DRIVER( bustamov )	/* 0083 (c) 1994 Taito */
+	DRIVER( whph )		/* 0090 (c) 1995 World Heroes Perfect (Boss Hack) */	
+//	DRIVER( fr2ch )  	/* 0098 (c) 1995 Video Systems */
+	DRIVER( kof94h )	/* 0095 (c) 1994 Hack */
+	DRIVER( kof94k )	/* 0095 (c) 1994 Hack */
+	DRIVER( kof94br )	/* 0095 (c) 1994 Hack */
+	DRIVER( kof96evo )      /* 0214 (c) 1996 bootleg */
+	DRIVER( kof97pl2 )      /* 0232 (c) 1997 bootleg */
+	DRIVER( kof97pl3 )      /* 0232 (c) 1997 bootleg */	
+	DRIVER(	kof97bs )	/* 0232 (c) 1997 The King of Fighters '97 (Boss Hack By 0-DAY) */
+	DRIVER( wakwak7h )	/* 0225 (c) 1996 Waku Waku 7 (Boss Hack) */
+	DRIVER( lstbld2h )	/* 0243 (c) 1998 The Last Blade 2 / Bakumatsu Roman - Dai Ni Maku Gekka no Kenshi (Boss Hack) */
+	DRIVER( mslugxit ) 	/* 0250 (c) 1999 (Italian Hack) */
+	DRIVER( kof99ndh )	/* 0251 (c) 1999 The King of Fighters '99 - Millennium Battle (non encrypted P,decrypted C - Boss Hack) */
+	DRIVER( kof99nd )	/* 0251 (c) 1999 The King of Fighters '99 - Millennium Battle */
+	DRIVER( kof2000h )	/* 0257 (c) 2000 The King of Fighters 2000 (Boss Hack) */	
+	DRIVER( kof2001n )	/* 0262 (c) 2001 Eolith / SNK */
+	DRIVER( kof2k1h )	/* 0262 (c) 2001 The King of Fighters 2001 (Boss Hack) */
+	DRIVER( mslug4nd )	/* 0263 (c) 2002 Mega Enterprise */
+	DRIVER( rotdnd )	/* 0264 (c) 2002 Evoga / Playmore Corporation */
+	DRIVER( rotdbr)		/* 0264 (c) 2002 Evoga / Playmore Corporation */
+	DRIVER( rotdh )		/* 0264 (c) 2002 Rage of the Dragons (Boss Hack) */
+	DRIVER( kof2k2bd )	/* 0265 (c) Decrypted Bootleg */
+	DRIVER( kf2k4spl )	/* 0265 (c) Hack */
+	DRIVER( matrima )	/* 0266 (c) 2003 Noise Factory / Atlus Corporation */
+	DRIVER( mslug5nd )  	/* 0268 (c) 2003 SNK Playmore  */
+	DRIVER( svcplusb )      /* 0269 (c) 2003 Playmore Corporation */
+	DRIVER( samsh5ch )	/* 0270 (c) 2003 SNK Playmore / Yuki Enterprise */	
+	DRIVER( aof3b ) 	/* 0096 (c) 1996 Art of Fighting 3 - The Path of the Warrior / Art of Fighting - Ryuuko no Ken Gaiden (Boss Hack) */
+	DRIVER( fatfrspb )	/* 0058 (c) 1993 Fatal Fury Special / Garou Densetsu Special (Boss Hack) */
+	DRIVER( kof95rp )	/* 0084 (c) 1995 The King of Fighters '95 Remix Pro */
+	DRIVER( kof96b ) 	/* 0214 (c) 1996 The King of Fighters '96 - Boss Hack (set 1) */
+	DRIVER( kof96bb ) 	/* 0214 (c) 1996 The King of Fighters '96 - Boss Hack (set 2) */
+	DRIVER( kof98b ) 	/* 0242 (c) 1998 The King of Fighters '98 - The Slugfest / King of Fighters '98 - dream match never ends (Boss Hack) */
+	DRIVER( kof99bhs ) 	/* 0251 (c) 1999 The King of Fighters '99 - Millennium Battle (Boss Striker Hack) */
+	DRIVER( kof99rp )	/* 0251 (c) 1999 The King of Fighters '99 - Millennium Battle Remix Pro) */
+	DRIVER( lastbldb )	/* 0234 (c) 1997 The Last Blade / Bakumatsu Roman - Gekka no Kenshi (Boss Hack) */
+	DRIVER( rbff2b )	/* 0240 (c) 1998 Real Bout Fatal Fury 2 - The Newcomers / Real Bout Garou Densetsu 2 - the newcomers (Boss Hack) */
+	DRIVER( samsho2b ) 	/* 0063 (c) 1994 Samurai Shodown II / Shin Samurai Spirits - Haohmaru jigokuhen (Boss Hack) */
+	DRIVER( dbdrgneh ) 	/* 0082 (c) 1995 Double Dragon Enhance Hack (Neo-Geo) */
+	DRIVER( dbdrgnqb ) 	/* 0082 (c) 1995 Double Dragon Q Boss Hack (Neo-Geo) */
+	DRIVER( ffury3bd ) 	/* 0069 (c) 1995 Fatal Fury 3 - Road to the Final Victory / Garou Densetsu 3 - haruka-naru tatakai (Boss Hack) */
+	DRIVER( ninjamh )	/* 0217 (c) 1996 Ninja Master's - haoh-ninpo-cho (Boss Hack) */
+	DRIVER( rbffspbd ) 	/* 0223 (c) 1996 Real Bout Fatal Fury Special / Real Bout Garou Densetsu Special (Boss Hack) */
+	DRIVER( samshob ) 	/* 0045 (c) 1993 Samurai Shodown / Samurai Spirits (Boss Hack) */
+	DRIVER( kof2k1ru )	/* 0262 (c) 2001 The King of Fighters 2001 Remix Ultra Ver 2.3 by Jason */
+	DRIVER( svcrm )		/* 0269 (c) 2003 Snk vs Capcom - Chaos Remix Ultra Ver 1.2 by Jason */
+	DRIVER( kof96rm )	/* 0214 (c) 1996 The King of Fighters '96 Remix Pro 2.1 by Marcochen [PPX HACK TEAM] */
+	DRIVER( svch )		/* 0269 (c) 2003 SVC CHAOS: SNK VS. CAPCOM REMIX Ver 1.0 by chbandy */
+	DRIVER( kof10thu )	/* 5004 (c) 2005 The King of Fighters 10Th Anniversary UNIQUE: ALL TEAM BATTLE (bootleg) */
+	DRIVER( kf10thud )	/* 5004 (c) 2005 The King of Fighters 10Th Anniversary UNIQUE: ALL TEAM BATTLE (decrypted, bootleg) */
+	DRIVER( kf10thub )	/* 5004 (c) 2005 The King of Fighters 10Th Anniversary UNIQUE: ALL TEAM BATTLE (portuguese edition) */
+	DRIVER( kof2k4mp )	/* 0265 (c) 2005 The King of Fighters 2004 Special Edition Magic Plus */
+	DRIVER( nitdfr )	/* 0265 (c) 2000 Nightmare in the Dark French (NEO·ARC Traduction) */
+	DRIVER( wjammerk )	
+	DRIVER( msboot )	/* xxxx (c) 2005 Metal Slug - Super Vehicle-001 (Bootleg) */
+	DRIVER( flipshok )
+	DRIVER( neocu98k )
+	DRIVER( kof2k3br )
+	DRIVER( kof2knd )
+	DRIVER( kf2k4seb )
+	DRIVER( kof99bs )
+	DRIVER( kf2k2spl )
+	DRIVER( svcpcbd )
+	DRIVER( kof2k1rp )
+	DRIVER( kf2k1bs )
+	DRIVER( kof2k2rs )
+	DRIVER( kof96ep2 )
+	DRIVER( kof96ep3 )
+	DRIVER( kof96ncd )
+	DRIVER( kf2k3bs4 )
+	DRIVER( kof98sp )
+	DRIVER( kogf )
+	DRIVER( shockt2w )
+	DRIVER( svcpryu )
+	DRIVER( svcspryu )
+	DRIVER( ms5pcbd )
+	DRIVER( sthoopcd )
+	DRIVER( ms5boot )
+	DRIVER( kof97yk )
+	DRIVER( kof96k )
+	DRIVER( mslug5fr )
+	DRIVER( kf99fc2f )
+	DRIVER( kof2k2js )
+	DRIVER( svcps2 )
+	DRIVER( kf2k2evo )
+	DRIVER( kof95xg )
+	DRIVER( kof98sp2 )
+	DRIVER( kof98cd )
+	DRIVER( samsh4ps )
+	DRIVER( kof98co )
+	DRIVER( kof97zm )
+	DRIVER( kof96rf )
+	DRIVER( kf97bng )
+	DRIVER( mslug4dh )
+	DRIVER( kof97cb2 )
+	DRIVER( kof96ru )
+	DRIVER( kabukikb )
+	DRIVER( mslug2eh )
+	DRIVER( mslugxeh )
+	DRIVER( lastbdha )
+	DRIVER( lhopecd )
+	DRIVER( mslug4i )
+	DRIVER( kof98cn )
+	DRIVER( kof97evo )
+	DRIVER( kof97kai )
+	DRIVER( kf97nude )
+	DRIVER( kof97xi )
+	DRIVER( samsh5bs )
+	DRIVER( gpilotse )
+	DRIVER( spinmsth )
+//	DRIVER( kof96ae )	/* 0214 (c) 1996 hack */
+	DRIVER( kf9610th )	/* 0214 (c) 1996 hack */
+	DRIVER( kof96rp )
+	DRIVER( nam1975h )
+	DRIVER( samsh2sq )
+	DRIVER( samsh2ss )
+	DRIVER( kof98wh )
+	DRIVER( kof2k1b )
+	DRIVER( samsh4ev )
+	DRIVER( kof98rh )
+	DRIVER(	matrimeh )
+	DRIVER( rotdhab )
+	DRIVER( mslug2sh )
+	DRIVER( mslugxst )
+	DRIVER( ninjmsha )
+	DRIVER( gowcairy )
+	DRIVER( kof99fix )
+	DRIVER( sengok3p )
+	DRIVER( kof97xbt )
+	DRIVER( kof2kxxx )
+	DRIVER( kof99pb )
+	DRIVER( kof98sr )
+	DRIVER( kof99eur )
+	DRIVER( kof98cos )
+	DRIVER( kof9710th )
+	DRIVER( kof2kbsd )
+	DRIVER( kof2k1st )
