@@ -58,6 +58,10 @@
 #include "ui.h"
 #include "uiinput.h"
 
+#ifdef USE_SCALE_EFFECTS
+#include "osdscale.h"
+#endif /* USE_SCALE_EFFECTS */
+
 // MAMEOS headers
 #include "winmain.h"
 #include "video.h"
@@ -66,6 +70,10 @@
 #include "debugwin.h"
 #include "strconv.h"
 #include "config.h"
+
+#ifdef MAMEMESS
+#define MESS
+#endif /* MAMEMESS */
 
 #ifdef MESS
 #include "menu.h"
@@ -90,6 +98,10 @@ static win_monitor_info *primary_monitor;
 
 static bitmap_t *effect_bitmap;
 
+#ifdef USE_SCALE_EFFECTS
+static int cur_scale_xsize;
+static int cur_scale_ysize;
+#endif /* USE_SCALE_EFFECTS */
 
 
 //============================================================
@@ -229,8 +241,22 @@ void osd_update(running_machine *machine, int skip_redraw)
 
 	// if we're not skipping this redraw, update all windows
 	if (!skip_redraw)
+	{
+#ifdef USE_SCALE_EFFECTS
+		extern int win_scale_res_changed;
+
+		win_scale_res_changed = 0;
+		if (scale_effect.xsize != cur_scale_xsize || scale_effect.ysize != cur_scale_ysize)
+		{
+			win_scale_res_changed = 1;
+			cur_scale_xsize = scale_effect.xsize;
+			cur_scale_ysize = scale_effect.ysize;
+		}
+#endif /* USE_SCALE_EFFECTS */
+
 		for (window = win_window_list; window != NULL; window = window->next)
 			winwindow_video_window_update(window);
+	}
 
 	// poll the joystick values here
 	winwindow_process_events(machine, TRUE);
@@ -261,7 +287,7 @@ static void init_monitors(void)
 			char *utf8_device = utf8_from_tstring(monitor->info.szDevice);
 			if (utf8_device != NULL)
 			{
-				mame_printf_verbose("Video: Monitor %p = \"%s\" %s\n", monitor->handle, utf8_device, (monitor == primary_monitor) ? "(primary)" : "");
+				mame_printf_verbose(_WINDOWS("Video: Monitor %p = \"%s\" %s\n"), monitor->handle, utf8_device, (monitor == primary_monitor) ? _WINDOWS("(primary)") : "");
 				osd_free(utf8_device);
 			}
 		}
@@ -398,6 +424,17 @@ static void extract_video_config(running_machine *machine)
 {
 	const char *stemp;
 
+#ifdef USE_SCALE_EFFECTS
+	stemp = options_get_string(mame_options(), OPTION_SCALE_EFFECT);
+	if (stemp)
+	{
+		scale_decode(stemp);
+
+		if (scale_effect.effect)
+			mame_printf_verbose(_WINDOWS("Using %s scale effect\n"), scale_desc(scale_effect.effect));
+	}
+#endif /* USE_SCALE_EFFECTS */
+
 	// global options: extract the data
 	video_config.windowed      = options_get_bool(machine->options(), WINOPTION_WINDOW);
 	video_config.prescale      = options_get_int(machine->options(), WINOPTION_PRESCALE);
@@ -429,11 +466,11 @@ static void extract_video_config(running_machine *machine)
 	{
 		video_config.mode = VIDEO_MODE_NONE;
 		if (options_get_int(machine->options(), OPTION_SECONDS_TO_RUN) == 0)
-			mame_printf_warning("Warning: -video none doesn't make much sense without -seconds_to_run\n");
+			mame_printf_warning(_WINDOWS("Warning: -video none doesn't make much sense without -seconds_to_run\n"));
 	}
 	else
 	{
-		mame_printf_warning("Invalid video value %s; reverting to gdi\n", stemp);
+		mame_printf_warning(_WINDOWS("Invalid video value %s; reverting to gdi\n"), stemp);
 		video_config.mode = VIDEO_MODE_GDI;
 	}
 	video_config.waitvsync     = options_get_bool(machine->options(), WINOPTION_WAITVSYNC);
@@ -483,7 +520,7 @@ static void load_effect_overlay(running_machine *machine, const char *filename)
 	effect_bitmap = render_load_png(OPTION_ARTPATH, NULL, tempstr, NULL, NULL);
 	if (effect_bitmap == NULL)
 	{
-		mame_printf_error("Unable to load PNG file '%s'\n", tempstr);
+		mame_printf_error(_WINDOWS("Unable to load PNG file '%s'\n"), tempstr);
 		global_free(tempstr);
 		return;
 	}
@@ -514,7 +551,7 @@ static float get_aspect(const char *name, int report_error)
 		data = defdata;
 	}
 	if (sscanf(data, "%d:%d", &num, &den) != 2 && report_error)
-		mame_printf_error("Illegal aspect ratio value for %s = %s\n", name, data);
+		mame_printf_error(_WINDOWS("Illegal aspect ratio value for %s = %s\n"), name, data);
 	return (float)num / (float)den;
 }
 
@@ -537,5 +574,5 @@ static void get_resolution(const char *name, win_window_config *config, int repo
 		data = defdata;
 	}
 	if (sscanf(data, "%dx%d@%d", &config->width, &config->height, &config->refresh) < 2 && report_error)
-		mame_printf_error("Illegal resolution value for %s = %s\n", name, data);
+		mame_printf_error(_WINDOWS("Illegal resolution value for %s = %s\n"), name, data);
 }

@@ -52,6 +52,10 @@
 // core emulator headers -- must be first
 #include "emucore.h"
 #include "eminline.h"
+#include "uilang.h"
+#ifdef UI_COLOR_DISPLAY
+#include "uipal.h"
+#endif /* UI_COLOR_DISPLAY */
 
 // commonly-referenecd utilities imported from lib/util
 #include "chd.h"
@@ -103,7 +107,7 @@
 #include "image.h"
 
 // the running machine
-#ifdef MESS
+#ifdef MAMEMESS
 #include "mess.h"
 #endif /* MESS */
 #include "machine.h"

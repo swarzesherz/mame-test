@@ -323,7 +323,7 @@ INLINE void set_texture(d3d_info *d3d, texture_info *texture)
 	{
 		d3d->last_texture = texture;
 		result = (*d3dintf->device.set_texture)(d3d->device, 0, (texture == NULL) ? NULL : texture->d3dfinaltex);
-		if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during device set_texture call\n", (int)result);
+		if (result != D3D_OK) mame_printf_verbose(_WINDOWS("Direct3D: Error %08X during device set_texture call\n"), (int)result);
 	}
 }
 
@@ -335,9 +335,9 @@ INLINE void set_filter(d3d_info *d3d, int filter)
 	{
 		d3d->last_filter = filter;
 		result = (*d3dintf->device.set_texture_stage_state)(d3d->device, 0, (D3DTEXTURESTAGESTATETYPE)D3DTSS_MINFILTER, filter ? D3DTEXF_LINEAR : D3DTEXF_POINT);
-		if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during device set_texture_stage_state call\n", (int)result);
+		if (result != D3D_OK) mame_printf_verbose(_WINDOWS("Direct3D: Error %08X during device set_texture_stage_state call\n"), (int)result);
 		result = (*d3dintf->device.set_texture_stage_state)(d3d->device, 0, (D3DTEXTURESTAGESTATETYPE)D3DTSS_MAGFILTER, filter ? D3DTEXF_LINEAR : D3DTEXF_POINT);
-		if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during device set_texture_stage_state call\n", (int)result);
+		if (result != D3D_OK) mame_printf_verbose(_WINDOWS("Direct3D: Error %08X during device set_texture_stage_state call\n"), (int)result);
 	}
 }
 
@@ -349,9 +349,9 @@ INLINE void set_wrap(d3d_info *d3d, int wrap)
 	{
 		d3d->last_wrap = wrap;
 		result = (*d3dintf->device.set_texture_stage_state)(d3d->device, 0, (D3DTEXTURESTAGESTATETYPE)D3DTSS_ADDRESSU, wrap ? D3DTADDRESS_WRAP : D3DTADDRESS_CLAMP);
-		if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during device set_texture_stage_state call\n", (int)result);
+		if (result != D3D_OK) mame_printf_verbose(_WINDOWS("Direct3D: Error %08X during device set_texture_stage_state call\n"), (int)result);
 		result = (*d3dintf->device.set_texture_stage_state)(d3d->device, 0, (D3DTEXTURESTAGESTATETYPE)D3DTSS_ADDRESSV, wrap ? D3DTADDRESS_WRAP : D3DTADDRESS_CLAMP);
-		if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during device set_texture_stage_state call\n", (int)result);
+		if (result != D3D_OK) mame_printf_verbose(_WINDOWS("Direct3D: Error %08X during device set_texture_stage_state call\n"), (int)result);
 	}
 }
 
@@ -363,7 +363,7 @@ INLINE void set_modmode(d3d_info *d3d, DWORD modmode)
 	{
 		d3d->last_modmode = modmode;
 		result = (*d3dintf->device.set_texture_stage_state)(d3d->device, 0, D3DTSS_COLOROP, modmode);
-		if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during device set_texture_stage_state call\n", (int)result);
+		if (result != D3D_OK) mame_printf_verbose(_WINDOWS("Direct3D: Error %08X during device set_texture_stage_state call\n"), (int)result);
 	}
 }
 
@@ -391,28 +391,28 @@ INLINE void set_blendmode(d3d_info *d3d, int blendmode)
 	{
 		d3d->last_blendenable = blendenable;
 		result = (*d3dintf->device.set_render_state)(d3d->device, D3DRS_ALPHABLENDENABLE, blendenable);
-		if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during device set_render_state call\n", (int)result);
+		if (result != D3D_OK) mame_printf_verbose(_WINDOWS("Direct3D: Error %08X during device set_render_state call\n"), (int)result);
 	}
 
 	if (blendop != d3d->last_blendop)
 	{
 		d3d->last_blendop = blendop;
 		result = (*d3dintf->device.set_render_state)(d3d->device, D3DRS_BLENDOP, blendop);
-		if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during device set_render_state call\n", (int)result);
+		if (result != D3D_OK) mame_printf_verbose(_WINDOWS("Direct3D: Error %08X during device set_render_state call\n"), (int)result);
 	}
 
 	if (blendsrc != d3d->last_blendsrc)
 	{
 		d3d->last_blendsrc = blendsrc;
 		result = (*d3dintf->device.set_render_state)(d3d->device, D3DRS_SRCBLEND, blendsrc);
-		if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during device set_render_state call\n", (int)result);
+		if (result != D3D_OK) mame_printf_verbose(_WINDOWS("Direct3D: Error %08X during device set_render_state call\n"), (int)result);
 	}
 
 	if (blenddst != d3d->last_blenddst)
 	{
 		d3d->last_blenddst = blenddst;
 		result = (*d3dintf->device.set_render_state)(d3d->device, D3DRS_DESTBLEND, blenddst);
-		if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during device set_render_state call\n", (int)result);
+		if (result != D3D_OK) mame_printf_verbose(_WINDOWS("Direct3D: Error %08X during device set_render_state call\n"), (int)result);
 	}
 }
 
@@ -496,7 +496,7 @@ int drawd3d_init(win_draw_callbacks *callbacks)
 	// if we failed, note the error
 	if (d3dintf == NULL)
 	{
-		mame_printf_error("Unable to initialize Direct3D.\n");
+		mame_printf_error(_WINDOWS("Unable to initialize Direct3D.\n"));
 		return 1;
 	}
 
@@ -556,7 +556,7 @@ static int drawd3d_window_init(win_window_info *window)
 
 error:
 	drawd3d_window_destroy(window);
-	mame_printf_error("Unable to initialize Direct3D.\n");
+	mame_printf_error(_WINDOWS("Unable to initialize Direct3D.\n"));
 	return 1;
 }
 
@@ -652,7 +652,7 @@ mtlog_add("drawd3d_window_draw: begin");
 	// begin the scene
 mtlog_add("drawd3d_window_draw: begin_scene");
 	result = (*d3dintf->device.begin_scene)(d3d->device);
-	if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during device begin_scene call\n", (int)result);
+	if (result != D3D_OK) mame_printf_verbose(_WINDOWS("Direct3D: Error %08X during device begin_scene call\n"), (int)result);
 
 	d3d->lockedbuf = NULL;
 
@@ -681,13 +681,13 @@ mtlog_add("drawd3d_window_draw: flush_pending end");
 mtlog_add("drawd3d_window_draw: end_scene begin");
 	result = (*d3dintf->device.end_scene)(d3d->device);
 mtlog_add("drawd3d_window_draw: end_scene end");
-	if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during device end_scene call\n", (int)result);
+	if (result != D3D_OK) mame_printf_verbose(_WINDOWS("Direct3D: Error %08X during device end_scene call\n"), (int)result);
 
 	// present the current buffers
 mtlog_add("drawd3d_window_draw: present begin");
 	result = (*d3dintf->device.present)(d3d->device, NULL, NULL, NULL, NULL, 0);
 mtlog_add("drawd3d_window_draw: present end");
-	if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during device present call\n", (int)result);
+	if (result != D3D_OK) mame_printf_verbose(_WINDOWS("Direct3D: Error %08X during device present call\n"), (int)result);
 	return 0;
 }
 
@@ -711,17 +711,17 @@ static int device_create(win_window_info *window)
 	verify = device_verify_caps(d3d);
 	if (verify == 2)
 	{
-		mame_printf_error("Error: Device does not meet minimum requirements for Direct3D rendering\n");
+		mame_printf_error(_WINDOWS("Error: Device does not meet minimum requirements for Direct3D rendering\n"));
 		return 1;
 	}
 	if (verify == 1)
-		mame_printf_warning("Warning: Device may not perform well for Direct3D rendering\n");
+		mame_printf_warning(_WINDOWS("Warning: Device may not perform well for Direct3D rendering\n"));
 
 	// verify texture formats
 	result = (*d3dintf->d3d.check_device_format)(d3dintf, d3d->adapter, D3DDEVTYPE_HAL, d3d->pixformat, 0, D3DRTYPE_TEXTURE, D3DFMT_A8R8G8B8);
 	if (result != D3D_OK)
 	{
-		mame_printf_error("Error: A8R8G8B8 format textures not supported\n");
+		mame_printf_error(_WINDOWS("Error: A8R8G8B8 format textures not supported\n"));
 		return 1;
 	}
 
@@ -735,7 +735,7 @@ static int device_create(win_window_info *window)
 		if (result != D3D_OK)
 			d3d->yuv_format = D3DFMT_A8R8G8B8;
 	}
-	mame_printf_verbose("Direct3D: YUV format = %s\n", (d3d->yuv_format == D3DFMT_YUY2) ? "YUY2" : (d3d->yuv_format == D3DFMT_UYVY) ? "UYVY" : "RGB");
+	mame_printf_verbose(_WINDOWS("Direct3D: YUV format = %s\n"), (d3d->yuv_format == D3DFMT_YUY2) ? "YUY2" : (d3d->yuv_format == D3DFMT_UYVY) ? "UYVY" : "RGB");
 
 try_again:
 	// try for XRGB first
@@ -753,7 +753,7 @@ try_again:
 		}
 		if (result != D3D_OK)
 		{
-			mame_printf_error("Error: unable to configure a screen texture format\n");
+			mame_printf_error(_WINDOWS("Error: unable to configure a screen texture format\n"));
 			return 1;
 		}
 	}
@@ -789,15 +789,15 @@ try_again:
 		}
 
 		//  fatal error if we just can't do it
-		mame_printf_error("Unable to create the Direct3D device (%08X)\n", (UINT32)result);
+		mame_printf_error(_WINDOWS("Unable to create the Direct3D device (%08X)\n"), (UINT32)result);
 		return 1;
 	}
 	d3d->create_error_count = 0;
-	mame_printf_verbose("Direct3D: Device created at %dx%d\n", d3d->width, d3d->height);
+	mame_printf_verbose(_WINDOWS("Direct3D: Device created at %dx%d\n"), d3d->width, d3d->height);
 
 	// set the max texture size
 	render_target_set_max_texture_size(window->target, d3d->texture_max_width, d3d->texture_max_height);
-	mame_printf_verbose("Direct3D: Max texture size = %dx%d\n", (int)d3d->texture_max_width, (int)d3d->texture_max_height);
+	mame_printf_verbose(_WINDOWS("Direct3D: Max texture size = %dx%d\n"), (int)d3d->texture_max_width, (int)d3d->texture_max_height);
 
 	// set the gamma if we need to
 	if (window->fullscreen)
@@ -810,7 +810,7 @@ try_again:
 		{
 			// warn if we can't do it
 			if (!d3d->gamma_supported)
-				mame_printf_warning("Direct3D: Warning - device does not support full screen gamma correction.\n");
+				mame_printf_warning(_WINDOWS("Direct3D: Warning - device does not support full screen gamma correction.\n"));
 			else
 			{
 				D3DGAMMARAMP ramp;
@@ -844,7 +844,7 @@ static int device_create_resources(d3d_info *d3d)
 				VERTEX_FORMAT, D3DPOOL_DEFAULT, &d3d->vertexbuf);
 	if (result != D3D_OK)
 	{
-		mame_printf_error("Error creating vertex buffer (%08X)", (UINT32)result);
+		mame_printf_error(_WINDOWS("Error creating vertex buffer (%08X)"), (UINT32)result);
 		return 1;
 	}
 
@@ -852,7 +852,7 @@ static int device_create_resources(d3d_info *d3d)
 	result = (*d3dintf->device.set_vertex_shader)(d3d->device, (D3DFORMAT)VERTEX_FORMAT);
 	if (result != D3D_OK)
 	{
-		mame_printf_error("Error setting vertex shader (%08X)", (UINT32)result);
+		mame_printf_error(_WINDOWS("Error setting vertex shader (%08X)"), (UINT32)result);
 		return 1;
 	}
 
@@ -965,126 +965,126 @@ static int device_verify_caps(d3d_info *d3d)
 
 	// fetch a few core caps
 	result = (*d3dintf->d3d.get_caps_dword)(d3dintf, d3d->adapter, D3DDEVTYPE_HAL, CAPS_TEXTURE_CAPS, &d3d->texture_caps);
-	if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during get_caps_dword call\n", (int)result);
+	if (result != D3D_OK) mame_printf_verbose(_WINDOWS("Direct3D: Error %08X during get_caps_dword call\n"), (int)result);
 	result = (*d3dintf->d3d.get_caps_dword)(d3dintf, d3d->adapter, D3DDEVTYPE_HAL, CAPS_MAX_TEXTURE_ASPECT, &d3d->texture_max_aspect);
-	if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during get_caps_dword call\n", (int)result);
+	if (result != D3D_OK) mame_printf_verbose(_WINDOWS("Direct3D: Error %08X during get_caps_dword call\n"), (int)result);
 	result = (*d3dintf->d3d.get_caps_dword)(d3dintf, d3d->adapter, D3DDEVTYPE_HAL, CAPS_MAX_TEXTURE_WIDTH, &d3d->texture_max_width);
-	if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during get_caps_dword call\n", (int)result);
+	if (result != D3D_OK) mame_printf_verbose(_WINDOWS("Direct3D: Error %08X during get_caps_dword call\n"), (int)result);
 	result = (*d3dintf->d3d.get_caps_dword)(d3dintf, d3d->adapter, D3DDEVTYPE_HAL, CAPS_MAX_TEXTURE_HEIGHT, &d3d->texture_max_height);
-	if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during get_caps_dword call\n", (int)result);
+	if (result != D3D_OK) mame_printf_verbose(_WINDOWS("Direct3D: Error %08X during get_caps_dword call\n"), (int)result);
 
 	// verify presentation capabilities
 	result = (*d3dintf->d3d.get_caps_dword)(d3dintf, d3d->adapter, D3DDEVTYPE_HAL, CAPS_PRESENTATION_INTERVALS, &tempcaps);
-	if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during get_caps_dword call\n", (int)result);
+	if (result != D3D_OK) mame_printf_verbose(_WINDOWS("Direct3D: Error %08X during get_caps_dword call\n"), (int)result);
 	if (!(tempcaps & D3DPRESENT_INTERVAL_IMMEDIATE))
 	{
-		mame_printf_verbose("Direct3D: Error - Device does not support immediate presentations\n");
+		mame_printf_verbose(_WINDOWS("Direct3D: Error - Device does not support immediate presentations\n"));
 		retval = 2;
 	}
 	if (!(tempcaps & D3DPRESENT_INTERVAL_ONE))
 	{
-		mame_printf_verbose("Direct3D: Error - Device does not support per-refresh presentations\n");
+		mame_printf_verbose(_WINDOWS("Direct3D: Error - Device does not support per-refresh presentations\n"));
 		retval = 2;
 	}
 
 	// verify device capabilities
 	result = (*d3dintf->d3d.get_caps_dword)(d3dintf, d3d->adapter, D3DDEVTYPE_HAL, CAPS_DEV_CAPS, &tempcaps);
-	if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during get_caps_dword call\n", (int)result);
+	if (result != D3D_OK) mame_printf_verbose(_WINDOWS("Direct3D: Error %08X during get_caps_dword call\n"), (int)result);
 	if (!(tempcaps & D3DDEVCAPS_CANRENDERAFTERFLIP))
 	{
-		mame_printf_verbose("Direct3D: Warning - Device does not support queued rendering after a page flip\n");
+		mame_printf_verbose(_WINDOWS("Direct3D: Warning - Device does not support queued rendering after a page flip\n"));
 		retval = 1;
 	}
 	if (!(tempcaps & D3DDEVCAPS_HWRASTERIZATION))
 	{
-		mame_printf_verbose("Direct3D: Warning - Device does not support hardware rasterization\n");
+		mame_printf_verbose(_WINDOWS("Direct3D: Warning - Device does not support hardware rasterization\n"));
 		retval = 1;
 	}
 
 	// verify source blend capabilities
 	result = (*d3dintf->d3d.get_caps_dword)(d3dintf, d3d->adapter, D3DDEVTYPE_HAL, CAPS_SRCBLEND_CAPS, &tempcaps);
-	if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during get_caps_dword call\n", (int)result);
+	if (result != D3D_OK) mame_printf_verbose(_WINDOWS("Direct3D: Error %08X during get_caps_dword call\n"), (int)result);
 	if (!(tempcaps & D3DPBLENDCAPS_SRCALPHA))
 	{
-		mame_printf_verbose("Direct3D: Error - Device does not support source alpha blending with source alpha\n");
+		mame_printf_verbose(_WINDOWS("Direct3D: Error - Device does not support source alpha blending with source alpha\n"));
 		retval = 2;
 	}
 	if (!(tempcaps & D3DPBLENDCAPS_DESTCOLOR))
 	{
-		mame_printf_verbose("Direct3D: Error - Device does not support source alpha blending with destination color\n");
+		mame_printf_verbose(_WINDOWS("Direct3D: Error - Device does not support source alpha blending with destination color\n"));
 		retval = 2;
 	}
 
 	// verify destination blend capabilities
 	result = (*d3dintf->d3d.get_caps_dword)(d3dintf, d3d->adapter, D3DDEVTYPE_HAL, CAPS_DSTBLEND_CAPS, &tempcaps);
-	if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during get_caps_dword call\n", (int)result);
+	if (result != D3D_OK) mame_printf_verbose(_WINDOWS("Direct3D: Error %08X during get_caps_dword call\n"), (int)result);
 	if (!(tempcaps & D3DPBLENDCAPS_ZERO))
 	{
-		mame_printf_verbose("Direct3D: Error - Device does not support dest alpha blending with zero\n");
+		mame_printf_verbose(_WINDOWS("Direct3D: Error - Device does not support dest alpha blending with zero\n"));
 		retval = 2;
 	}
 	if (!(tempcaps & D3DPBLENDCAPS_ONE))
 	{
-		mame_printf_verbose("Direct3D: Error - Device does not support dest alpha blending with one\n");
+		mame_printf_verbose(_WINDOWS("Direct3D: Error - Device does not support dest alpha blending with one\n"));
 		retval = 2;
 	}
 	if (!(tempcaps & D3DPBLENDCAPS_INVSRCALPHA))
 	{
-		mame_printf_verbose("Direct3D: Error - Device does not support dest alpha blending with inverted source alpha\n");
+		mame_printf_verbose(_WINDOWS("Direct3D: Error - Device does not support dest alpha blending with inverted source alpha\n"));
 		retval = 2;
 	}
 
 	// verify texture capabilities
 	if (!(d3d->texture_caps & D3DPTEXTURECAPS_ALPHA))
 	{
-		mame_printf_verbose("Direct3D: Error - Device does not support texture alpha\n");
+		mame_printf_verbose(_WINDOWS("Direct3D: Error - Device does not support texture alpha\n"));
 		retval = 2;
 	}
 
 	// verify texture filter capabilities
 	result = (*d3dintf->d3d.get_caps_dword)(d3dintf, d3d->adapter, D3DDEVTYPE_HAL, CAPS_TEXTURE_FILTER_CAPS, &tempcaps);
-	if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during get_caps_dword call\n", (int)result);
+	if (result != D3D_OK) mame_printf_verbose(_WINDOWS("Direct3D: Error %08X during get_caps_dword call\n"), (int)result);
 	if (!(tempcaps & D3DPTFILTERCAPS_MAGFPOINT))
 	{
-		mame_printf_verbose("Direct3D: Warning - Device does not support point-sample texture filtering for magnification\n");
+		mame_printf_verbose(_WINDOWS("Direct3D: Warning - Device does not support point-sample texture filtering for magnification\n"));
 		retval = 1;
 	}
 	if (!(tempcaps & D3DPTFILTERCAPS_MAGFLINEAR))
 	{
-		mame_printf_verbose("Direct3D: Warning - Device does not support bilinear texture filtering for magnification\n");
+		mame_printf_verbose(_WINDOWS("Direct3D: Warning - Device does not support bilinear texture filtering for magnification\n"));
 		retval = 1;
 	}
 	if (!(tempcaps & D3DPTFILTERCAPS_MINFPOINT))
 	{
-		mame_printf_verbose("Direct3D: Warning - Device does not support point-sample texture filtering for minification\n");
+		mame_printf_verbose(_WINDOWS("Direct3D: Warning - Device does not support point-sample texture filtering for minification\n"));
 		retval = 1;
 	}
 	if (!(tempcaps & D3DPTFILTERCAPS_MINFLINEAR))
 	{
-		mame_printf_verbose("Direct3D: Warning - Device does not support bilinear texture filtering for minification\n");
+		mame_printf_verbose(_WINDOWS("Direct3D: Warning - Device does not support bilinear texture filtering for minification\n"));
 		retval = 1;
 	}
 
 	// verify texture addressing capabilities
 	result = (*d3dintf->d3d.get_caps_dword)(d3dintf, d3d->adapter, D3DDEVTYPE_HAL, CAPS_TEXTURE_ADDRESS_CAPS, &tempcaps);
-	if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during get_caps_dword call\n", (int)result);
+	if (result != D3D_OK) mame_printf_verbose(_WINDOWS("Direct3D: Error %08X during get_caps_dword call\n"), (int)result);
 	if (!(tempcaps & D3DPTADDRESSCAPS_CLAMP))
 	{
-		mame_printf_verbose("Direct3D: Warning - Device does not support texture clamping\n");
+		mame_printf_verbose(_WINDOWS("Direct3D: Warning - Device does not support texture clamping\n"));
 		retval = 1;
 	}
 	if (!(tempcaps & D3DPTADDRESSCAPS_WRAP))
 	{
-		mame_printf_verbose("Direct3D: Warning - Device does not support texture wrapping\n");
+		mame_printf_verbose(_WINDOWS("Direct3D: Warning - Device does not support texture wrapping\n"));
 		retval = 1;
 	}
 
 	// verify texture operation capabilities
 	result = (*d3dintf->d3d.get_caps_dword)(d3dintf, d3d->adapter, D3DDEVTYPE_HAL, CAPS_TEXTURE_OP_CAPS, &tempcaps);
-	if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during get_caps_dword call\n", (int)result);
+	if (result != D3D_OK) mame_printf_verbose(_WINDOWS("Direct3D: Error %08X during get_caps_dword call\n"), (int)result);
 	if (!(tempcaps & D3DTEXOPCAPS_MODULATE))
 	{
-		mame_printf_verbose("Direct3D: Warning - Device does not support texture modulation\n");
+		mame_printf_verbose(_WINDOWS("Direct3D: Warning - Device does not support texture modulation\n"));
 		retval = 1;
 	}
 
@@ -1094,16 +1094,16 @@ static int device_verify_caps(d3d_info *d3d)
 
 	// set a simpler flag to indicate we can use a gamma ramp
 	result = (*d3dintf->d3d.get_caps_dword)(d3dintf, d3d->adapter, D3DDEVTYPE_HAL, CAPS_CAPS2, &tempcaps);
-	if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during get_caps_dword call\n", (int)result);
+	if (result != D3D_OK) mame_printf_verbose(_WINDOWS("Direct3D: Error %08X during get_caps_dword call\n"), (int)result);
 	d3d->dynamic_supported = ((tempcaps & D3DCAPS2_DYNAMICTEXTURES) != 0);
 	d3d->gamma_supported = ((tempcaps & D3DCAPS2_FULLSCREENGAMMA) != 0);
-	if (d3d->dynamic_supported) mame_printf_verbose("Direct3D: Using dynamic textures\n");
+	if (d3d->dynamic_supported) mame_printf_verbose(_WINDOWS("Direct3D: Using dynamic textures\n"));
 
 	// set a simpler flag to indicate we can use StretchRect
 	result = (*d3dintf->d3d.get_caps_dword)(d3dintf, d3d->adapter, D3DDEVTYPE_HAL, CAPS_STRETCH_RECT_FILTER, &tempcaps);
-	if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during get_caps_dword call\n", (int)result);
+	if (result != D3D_OK) mame_printf_verbose(_WINDOWS("Direct3D: Error %08X during get_caps_dword call\n"), (int)result);
 	d3d->stretch_supported = ((tempcaps & D3DPTFILTERCAPS_MAGFPOINT) != 0);
-	if (d3d->stretch_supported && video_config.prescale > 1) mame_printf_verbose("Direct3D: Using StretchRect for prescaling\n");
+	if (d3d->stretch_supported && video_config.prescale > 1) mame_printf_verbose(_WINDOWS("Direct3D: Using StretchRect for prescaling\n"));
 
 	return retval;
 }
@@ -1126,7 +1126,7 @@ static int device_test_cooperative(d3d_info *d3d)
 	// if we're able to reset ourselves, try it
 	if (result == D3DERR_DEVICENOTRESET)
 	{
-		mame_printf_verbose("Direct3D: resetting device\n");
+		mame_printf_verbose(_WINDOWS("Direct3D: resetting device\n"));
 
 		// free all existing resources and call reset on the device
 		device_delete_resources(d3d);
@@ -1139,7 +1139,7 @@ static int device_test_cooperative(d3d_info *d3d)
 		// try to create the resources again; if that didn't work, delete the whole thing
 		if (device_create_resources(d3d))
 		{
-			mame_printf_verbose("Direct3D: failed to recreate resources for device; failing permanently\n");
+			mame_printf_verbose(_WINDOWS("Direct3D: failed to recreate resources for device; failing permanently\n"));
 			device_delete(d3d);
 			return 1;
 		}
@@ -1166,16 +1166,16 @@ static int config_adapter_mode(win_window_info *window)
 	result = (*d3dintf->d3d.get_adapter_identifier)(d3dintf, d3d->adapter, 0, &identifier);
 	if (result != D3D_OK)
 	{
-		mame_printf_error("Error getting identifier for adapter #%d\n", d3d->adapter);
+		mame_printf_error(_WINDOWS("Error getting identifier for adapter #%d\n"), d3d->adapter);
 		return 1;
 	}
-	mame_printf_verbose("Direct3D: Configuring adapter #%d = %s\n", d3d->adapter, identifier.Description);
+	mame_printf_verbose(_WINDOWS("Direct3D: Configuring adapter #%d = %s\n"), d3d->adapter, identifier.Description);
 
 	// get the current display mode
 	result = (*d3dintf->d3d.get_adapter_display_mode)(d3dintf, d3d->adapter, &d3d->origmode);
 	if (result != D3D_OK)
 	{
-		mame_printf_error("Error getting mode for adapter #%d\n", d3d->adapter);
+		mame_printf_error(_WINDOWS("Error getting mode for adapter #%d\n"), d3d->adapter);
 		return 1;
 	}
 
@@ -1199,7 +1199,7 @@ static int config_adapter_mode(win_window_info *window)
 			char *utf8_device = utf8_from_tstring(window->monitor->info.szDevice);
 			if (utf8_device != NULL)
 			{
-				mame_printf_error("Device %s currently in an unsupported mode\n", utf8_device);
+				mame_printf_error(_WINDOWS("Device %s currently in an unsupported mode\n"), utf8_device);
 				osd_free(utf8_device);
 			}
 			return 1;
@@ -1227,7 +1227,7 @@ static int config_adapter_mode(win_window_info *window)
 		char *utf8_device = utf8_from_tstring(window->monitor->info.szDevice);
 		if (utf8_device != NULL)
 		{
-			mame_printf_error("Proposed video mode not supported on device %s\n", utf8_device);
+			mame_printf_error(_WINDOWS("Proposed video mode not supported on device %s\n"), utf8_device);
 			osd_free(utf8_device);
 		}
 		return 1;
@@ -1298,7 +1298,7 @@ static void pick_best_mode(win_window_info *window)
 	maxmodes = (*d3dintf->d3d.get_adapter_mode_count)(d3dintf, d3d->adapter, D3DFMT_X8R8G8B8);
 
 	// enumerate all the video modes and find the best match
-	mame_printf_verbose("Direct3D: Selecting video mode...\n");
+	mame_printf_verbose(_WINDOWS("Direct3D: Selecting video mode...\n"));
 	for (modenum = 0; modenum < maxmodes; modenum++)
 	{
 		float size_score, refresh_score, final_score;
@@ -1354,7 +1354,7 @@ static void pick_best_mode(win_window_info *window)
 			d3d->refresh = mode.RefreshRate;
 		}
 	}
-	mame_printf_verbose("Direct3D: Mode selected = %4dx%4d@%3dHz\n", d3d->width, d3d->height, d3d->refresh);
+	mame_printf_verbose(_WINDOWS("Direct3D: Mode selected = %4dx%4d@%3dHz\n"), d3d->width, d3d->height, d3d->refresh);
 }
 
 
@@ -1631,12 +1631,12 @@ static void primitive_flush_pending(d3d_info *d3d)
 
 	// unlock the buffer
 	result = (*d3dintf->vertexbuf.unlock)(d3d->vertexbuf);
-	if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during vertex buffer unlock call\n", (int)result);
+	if (result != D3D_OK) mame_printf_verbose(_WINDOWS("Direct3D: Error %08X during vertex buffer unlock call\n"), (int)result);
 	d3d->lockedbuf = NULL;
 
 	// set the stream
 	result = (*d3dintf->device.set_stream_source)(d3d->device, 0, d3d->vertexbuf, sizeof(d3d_vertex));
-	if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during device set_stream_source call\n", (int)result);
+	if (result != D3D_OK) mame_printf_verbose(_WINDOWS("Direct3D: Error %08X during device set_stream_source call\n"), (int)result);
 
 	// now do the polys
 	for (polynum = vertnum = 0; polynum < d3d->numpolys; polynum++)
@@ -1664,7 +1664,7 @@ static void primitive_flush_pending(d3d_info *d3d)
 		// add the primitives
 		assert(vertnum + poly->numverts <= d3d->numverts);
 		result = (*d3dintf->device.draw_primitive)(d3d->device, poly->type, vertnum, poly->count);
-		if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during device draw_primitive call\n", (int)result);
+		if (result != D3D_OK) mame_printf_verbose(_WINDOWS("Direct3D: Error %08X during device draw_primitive call\n"), (int)result);
 		vertnum += poly->numverts;
 	}
 
@@ -1735,7 +1735,7 @@ static texture_info *texture_create(d3d_info *d3d, const render_texinfo *texsour
 		while (texture->yprescale > 1 && texture->rawheight * texture->yprescale > d3d->texture_max_height)
 			texture->yprescale--;
 		if (texture->xprescale != video_config.prescale || texture->yprescale != video_config.prescale)
-			mame_printf_verbose("Direct3D: adjusting prescale from %dx%d to %dx%d\n", video_config.prescale, video_config.prescale, texture->xprescale, texture->yprescale);
+			mame_printf_verbose(_WINDOWS("Direct3D: adjusting prescale from %dx%d to %dx%d\n"), video_config.prescale, video_config.prescale, texture->xprescale, texture->yprescale);
 
 		// loop until we allocate something or error
 		for (attempt = 0; attempt < 2; attempt++)
@@ -1891,7 +1891,7 @@ static void texture_compute_size(d3d_info *d3d, int texwidth, int texheight, tex
 	if (finalwidth > d3d->texture_max_width || finalheight > d3d->texture_max_height)
 	{
 		static int printed = FALSE;
-		if (!printed) mame_printf_warning("Texture too big! (wanted: %dx%d, max is %dx%d)\n", finalwidth, finalheight, (int)d3d->texture_max_width, (int)d3d->texture_max_height);
+		if (!printed) mame_printf_warning(_WINDOWS("Texture too big! (wanted: %dx%d, max is %dx%d)\n"), finalwidth, finalheight, (int)d3d->texture_max_width, (int)d3d->texture_max_height);
 		printed = TRUE;
 	}
 
@@ -2361,7 +2361,7 @@ static void texture_set_data(d3d_info *d3d, texture_info *texture, const render_
 				break;
 
 			default:
-				mame_printf_error("Unknown texture blendmode=%d format=%d\n", PRIMFLAG_GET_BLENDMODE(flags), PRIMFLAG_GET_TEXFORMAT(flags));
+				mame_printf_error(_WINDOWS("Unknown texture blendmode=%d format=%d\n"), PRIMFLAG_GET_BLENDMODE(flags), PRIMFLAG_GET_TEXFORMAT(flags));
 				break;
 		}
 	}
@@ -2374,7 +2374,7 @@ static void texture_set_data(d3d_info *d3d, texture_info *texture, const render_
 		case TEXTURE_TYPE_DYNAMIC:	result = (*d3dintf->texture.unlock_rect)(texture->d3dtex, 0);	break;
 		case TEXTURE_TYPE_SURFACE:	result = (*d3dintf->surface.unlock_rect)(texture->d3dsurface);	break;
 	}
-	if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during texture unlock_rect call\n", (int)result);
+	if (result != D3D_OK) mame_printf_verbose(_WINDOWS("Direct3D: Error %08X during texture unlock_rect call\n"), (int)result);
 
 	// prescale
 	texture_prescale(d3d, texture);
@@ -2398,7 +2398,7 @@ static void texture_prescale(d3d_info *d3d, texture_info *texture)
 
 	// for all cases, we need to get the surface of the render target
 	result = (*d3dintf->texture.get_surface_level)(texture->d3dfinaltex, 0, &surface);
-	if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during texture get_surface_level call\n", (int)result);
+	if (result != D3D_OK) mame_printf_verbose(_WINDOWS("Direct3D: Error %08X during texture get_surface_level call\n"), (int)result);
 
 	// if we have an offscreen plain surface, we can just StretchRect to it
 	if (texture->type == TEXTURE_TYPE_SURFACE)
@@ -2419,7 +2419,7 @@ static void texture_prescale(d3d_info *d3d, texture_info *texture)
 
 		// do the stretchrect
 		result = (*d3dintf->device.stretch_rect)(d3d->device, texture->d3dsurface, &source, surface, &dest, D3DTEXF_POINT);
-		if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during device stretct_rect call\n", (int)result);
+		if (result != D3D_OK) mame_printf_verbose(_WINDOWS("Direct3D: Error %08X during device stretct_rect call\n"), (int)result);
 	}
 
 	// if we are using a texture render target, we need to do more preparations
@@ -2431,24 +2431,24 @@ static void texture_prescale(d3d_info *d3d, texture_info *texture)
 
 		// first remember the original render target and set the new one
 		result = (*d3dintf->device.get_render_target)(d3d->device, 0, &backbuffer);
-		if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during device get_render_target call\n", (int)result);
+		if (result != D3D_OK) mame_printf_verbose(_WINDOWS("Direct3D: Error %08X during device get_render_target call\n"), (int)result);
 		result = (*d3dintf->device.set_render_target)(d3d->device, 0, surface);
-		if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during device set_render_target call\n", (int)result);
+		if (result != D3D_OK) mame_printf_verbose(_WINDOWS("Direct3D: Error %08X during device set_render_target call\n"), (int)result);
 		reset_render_states(d3d);
 
 		// start the scene
 		result = (*d3dintf->device.begin_scene)(d3d->device);
-		if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during device begin_scene call\n", (int)result);
+		if (result != D3D_OK) mame_printf_verbose(_WINDOWS("Direct3D: Error %08X during device begin_scene call\n"), (int)result);
 
 		// configure the rendering pipeline
 		set_filter(d3d, FALSE);
 		set_blendmode(d3d, BLENDMODE_NONE);
 		result = (*d3dintf->device.set_texture)(d3d->device, 0, texture->d3dtex);
-		if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during device set_texture call\n", (int)result);
+		if (result != D3D_OK) mame_printf_verbose(_WINDOWS("Direct3D: Error %08X during device set_texture call\n"), (int)result);
 
 		// lock the vertex buffer
 		result = (*d3dintf->vertexbuf.lock)(d3d->vertexbuf, 0, 0, (VOID **)&d3d->lockedbuf, D3DLOCK_DISCARD);
-		if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during vertex buffer lock call\n", (int)result);
+		if (result != D3D_OK) mame_printf_verbose(_WINDOWS("Direct3D: Error %08X during vertex buffer lock call\n"), (int)result);
 
 		// configure the X/Y coordinates on the target surface
 		d3d->lockedbuf[0].x = -0.5f;
@@ -2480,22 +2480,22 @@ static void texture_prescale(d3d_info *d3d, texture_info *texture)
 
 		// unlock the vertex buffer
 		result = (*d3dintf->vertexbuf.unlock)(d3d->vertexbuf);
-		if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during vertex buffer unlock call\n", (int)result);
+		if (result != D3D_OK) mame_printf_verbose(_WINDOWS("Direct3D: Error %08X during vertex buffer unlock call\n"), (int)result);
 		d3d->lockedbuf = NULL;
 
 		// set the stream and draw the triangle strip
 		result = (*d3dintf->device.set_stream_source)(d3d->device, 0, d3d->vertexbuf, sizeof(d3d_vertex));
-		if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during device set_stream_source call\n", (int)result);
+		if (result != D3D_OK) mame_printf_verbose(_WINDOWS("Direct3D: Error %08X during device set_stream_source call\n"), (int)result);
 		result = (*d3dintf->device.draw_primitive)(d3d->device, D3DPT_TRIANGLESTRIP, 0, 2);
-		if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during device draw_primitive call\n", (int)result);
+		if (result != D3D_OK) mame_printf_verbose(_WINDOWS("Direct3D: Error %08X during device draw_primitive call\n"), (int)result);
 
 		// end the scene
 		result = (*d3dintf->device.end_scene)(d3d->device);
-		if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during device end_scene call\n", (int)result);
+		if (result != D3D_OK) mame_printf_verbose(_WINDOWS("Direct3D: Error %08X during device end_scene call\n"), (int)result);
 
 		// reset the render target and release our reference to the backbuffer
 		result = (*d3dintf->device.set_render_target)(d3d->device, 0, backbuffer);
-		if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during device set_render_target call\n", (int)result);
+		if (result != D3D_OK) mame_printf_verbose(_WINDOWS("Direct3D: Error %08X during device set_render_target call\n"), (int)result);
 		(*d3dintf->surface.release)(backbuffer);
 		reset_render_states(d3d);
 	}

@@ -326,6 +326,8 @@ Notes:
 #include "includes/cps3.h"
 #include "machine/wd33c93.h"
 
+#include "cps3.lh"
+
 #define MASTER_CLOCK	42954500
 
 /* load extracted cd content? */
@@ -681,6 +683,21 @@ static void cps3_decrypt_bios(running_machine *machine)
 #endif
 }
 
+static int cps3_use_fastboot;
+
+static emu_timer* fastboot_timer;
+
+static TIMER_CALLBACK( fastboot_timer_callback )
+{
+	UINT32 *rom =  (UINT32*)decrypted_gamerom;//memory_region ( machine, "user4" );
+	if (cps3_altEncryption) rom = (UINT32*)memory_region(machine, "user4");
+
+	//  printf("fastboot callback %08x %08x", rom[0], rom[1]);
+	cpu_set_reg(machine->device("maincpu"), SH2_PC, rom[0]);
+	cpu_set_reg(machine->device("maincpu"), SH2_R15, rom[1]);
+	cpu_set_reg(machine->device("maincpu"), SH2_VBR, 0x6000000);
+}
+
 
 static DRIVER_INIT( cps3 )
 {
@@ -714,6 +731,7 @@ static DRIVER_INIT( cps3 )
 		intelflash_init( machine, i, FLASH_FUJITSU_29F016A, NULL );
 
 	cps3_eeprom = auto_alloc_array(machine, UINT32, 0x400/4);
+	cps3_use_fastboot = 0;
 }
 
 static DRIVER_INIT( jojo )    { cps3_key1 = 0x02203ee3; cps3_key2 = 0x01301972; cps3_altEncryption = 0; DRIVER_INIT_CALL(cps3); }
@@ -722,6 +740,12 @@ static DRIVER_INIT( sfiii )   { cps3_key1 = 0xb5fe053e; cps3_key2 = 0xfc03925a; 
 static DRIVER_INIT( sfiii2 )  { cps3_key1 = 0x00000000; cps3_key2 = 0x00000000; cps3_altEncryption = 1; DRIVER_INIT_CALL(cps3); }
 static DRIVER_INIT( sfiii3 )  { cps3_key1 = 0xa55432b4; cps3_key2 = 0x0c129981; cps3_altEncryption = 0; DRIVER_INIT_CALL(cps3); }
 static DRIVER_INIT( redearth ){ cps3_key1 = 0x9e300ab1; cps3_key2 = 0xa175b82c; cps3_altEncryption = 0; DRIVER_INIT_CALL(cps3); }
+static DRIVER_INIT( nocd )
+{
+	DRIVER_INIT_CALL( redearth );
+
+	cps3_use_fastboot = 1;
+}
 
 
 /* GFX decodes */
@@ -2238,6 +2262,106 @@ static INPUT_PORTS_START( cps3 )
 	PORT_BIT( 0x00100000, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(2)
 	PORT_BIT( 0x00200000, IP_ACTIVE_LOW, IPT_BUTTON5 ) PORT_PLAYER(2)
 	PORT_BIT( 0xffc00000, IP_ACTIVE_LOW, IPT_UNUSED ) // nothing here?
+
+	PORT_START("REG")
+	PORT_DIPNAME( 0x0000000f, 0x00000000, DEF_STR( Region ) )
+	PORT_DIPSETTING( 0x00000000, "Default" )
+	PORT_DIPSETTING( 0x00000001, DEF_STR( Japan ) )
+	PORT_DIPSETTING( 0x00000002, DEF_STR( Asia ) )
+	PORT_DIPSETTING( 0x00000003, DEF_STR( Europe ) )
+	PORT_DIPSETTING( 0x00000004, DEF_STR( USA ) )
+	PORT_DIPSETTING( 0x00000005, DEF_STR( Hispanic ) )
+	PORT_DIPSETTING( 0x00000006, "Brazil" )
+	PORT_DIPSETTING( 0x00000007, "Oceania" )
+	PORT_DIPSETTING( 0x00000008, DEF_STR( Asia ) )
+INPUT_PORTS_END
+
+static INPUT_PORTS_START( sfiiiws )
+	PORT_INCLUDE(cps3)
+
+	PORT_START("WS")
+	PORT_DIPNAME( 0x01000000, 0x00000000, "Screen Mode" )
+	PORT_DIPSETTING( 0x00000000, DEF_STR( Normal ) )
+	PORT_DIPSETTING( 0x01000000, "Widescreen" )
+INPUT_PORTS_END
+
+static INPUT_PORTS_START( jojo )
+	PORT_INCLUDE(cps3)
+
+	PORT_MODIFY("REG")
+	PORT_DIPNAME( 0x0000000f, 0x00000000, DEF_STR( Region ) )
+	PORT_DIPSETTING( 0x00000000, "Default" )
+	PORT_DIPSETTING( 0x00000001, DEF_STR( Japan ) )
+	PORT_DIPSETTING( 0x00000002, DEF_STR( Asia ) )
+	PORT_DIPSETTING( 0x00000003, DEF_STR( Europe ) )
+	PORT_DIPSETTING( 0x00000004, DEF_STR( USA ) )
+	PORT_DIPSETTING( 0x00000005, DEF_STR( Hispanic ) )
+	PORT_DIPSETTING( 0x00000006, "Brazil" )
+	PORT_DIPSETTING( 0x00000007, "Oceania" )
+	PORT_DIPSETTING( 0x00000008, "Korea" )
+
+	PORT_START("VER")
+	PORT_DIPNAME( 0x000000f0, 0x00000000, DEF_STR( Version ) )
+	PORT_DIPSETTING( 0x00000000, DEF_STR( Normal ) )
+	PORT_DIPSETTING( 0x00000010, "Character Check" )
+	PORT_DIPSETTING( 0x00000020, "Publicity" )
+	PORT_DIPSETTING( 0x00000030, "Location Test" )
+	PORT_DIPSETTING( 0x00000040, "Show" )
+	PORT_DIPSETTING( 0x00000050, "Debug" )
+	PORT_DIPSETTING( 0x00000060, "Sample" )
+	PORT_DIPSETTING( 0x00000070, "Development" )
+	PORT_DIPSETTING( 0x00000080, "Inspection" )
+INPUT_PORTS_END
+
+static INPUT_PORTS_START( redearth )
+	PORT_INCLUDE(cps3)
+
+	PORT_MODIFY("REG")
+	PORT_DIPNAME( 0x0000000f, 0x00000000, DEF_STR( Region ) )
+	PORT_DIPSETTING( 0x00000000, "Default" )
+	PORT_DIPSETTING( 0x00000001, DEF_STR( Japan ) )
+	PORT_DIPSETTING( 0x00000002, DEF_STR( Asia ) )
+	PORT_DIPSETTING( 0x00000003, DEF_STR( Europe ) )
+	PORT_DIPSETTING( 0x00000004, DEF_STR( USA ) )
+	PORT_DIPSETTING( 0x00000005, DEF_STR( Hispanic ) )
+	PORT_DIPSETTING( 0x00000006, "Brazil" )
+	PORT_DIPSETTING( 0x00000007, "Oceania" )
+	PORT_DIPSETTING( 0x00000008, "Asia NCD" )
+
+	PORT_START("VER")
+	PORT_DIPNAME( 0x000000f0, 0x00000000, DEF_STR( Version ) )
+	PORT_DIPSETTING( 0x00000000, DEF_STR( Normal ) )
+	PORT_DIPSETTING( 0x00000010, "Character Check" )
+	PORT_DIPSETTING( 0x00000020, "Publicity" )
+	PORT_DIPSETTING( 0x00000030, "Location Test" )
+	PORT_DIPSETTING( 0x00000040, "Show" )
+	PORT_DIPSETTING( 0x00000050, "???" )
+	PORT_DIPSETTING( 0x00000060, "????" )
+INPUT_PORTS_END
+
+static INPUT_PORTS_START( redeartn )
+	PORT_INCLUDE(cps3)
+
+	PORT_MODIFY("REG")
+	PORT_DIPNAME( 0x0000000f, 0x00000000, DEF_STR( Region ) )
+	PORT_DIPSETTING( 0x00000000, "Default" )
+	PORT_DIPSETTING( 0x00000001, DEF_STR( Japan ) )
+	PORT_DIPSETTING( 0x00000002, DEF_STR( Asia ) )
+	PORT_DIPSETTING( 0x00000003, DEF_STR( Europe ) )
+	PORT_DIPSETTING( 0x00000004, DEF_STR( USA ) )
+	PORT_DIPSETTING( 0x00000005, DEF_STR( Hispanic ) )
+	PORT_DIPSETTING( 0x00000006, "Brazil" )
+	PORT_DIPSETTING( 0x00000007, "Oceania" )
+	PORT_DIPSETTING( 0x00000008, "Asia NCD" )
+
+	PORT_START("VER")
+	PORT_DIPNAME( 0x000000f0, 0x00000060, DEF_STR( Version ) )
+	PORT_DIPSETTING( 0x00000060, DEF_STR( Normal ) )
+	PORT_DIPSETTING( 0x00000010, "Character Check" )
+	PORT_DIPSETTING( 0x00000020, "Publicity" )
+	PORT_DIPSETTING( 0x00000030, "Location Test" )
+	PORT_DIPSETTING( 0x00000040, "Show" )
+	PORT_DIPSETTING( 0x00000050, "???" )
 INPUT_PORTS_END
 
 static INTERRUPT_GEN(cps3_vbl_interrupt)
@@ -2283,6 +2407,56 @@ static MACHINE_START( cps3 )
 static MACHINE_RESET( cps3 )
 {
 	current_table_address = -1;
+
+	{
+		UINT32 *rom = (UINT32*)memory_region(machine, "user1");
+		UINT32 reg_dip = input_port_read(machine,"REG");
+
+		/* switch region */
+		if(rom[0x1fed4/4] == 0x575a442d)
+		{
+			if (!reg_dip) reg_dip = rom[0x1fed8/4] & 0x0000000f;
+			rom[0x1fed8/4] &= 0xfffffff0;
+			rom[0x1fed8/4] |= reg_dip;
+		}
+		else
+		{
+			if (!reg_dip) reg_dip = rom[0x1fec8/4] & 0x0000000f;
+			rom[0x1fec8/4] &= 0xfffffff0;
+			rom[0x1fec8/4] |= reg_dip;
+		}
+		/* switch version */
+		if(rom[0x1fed4/4] == 0x575a442d)
+		{
+			UINT32 ver_dip = input_port_read(machine,"VER");
+			if (!ver_dip) ver_dip = rom[0x1fed8/4] & 0x000000f0;
+			rom[0x1fed8/4] &= 0xffffff0f;
+			rom[0x1fed8/4] |= ver_dip;
+		}
+		else if (rom[0x1fec4/4] == 0x4a4a4b2d || rom[0x1fec4/4] == 0x4a4a4d2d)
+		{
+			UINT32 ver_dip = input_port_read(machine,"VER");
+			if (!ver_dip) ver_dip = rom[0x1fec8/4] & 0x000000f0;
+			rom[0x1fec8/4] &= 0xffffff0f;
+			rom[0x1fec8/4] |= ver_dip;
+		}
+		/* switch screen mode */
+		if (rom[0x1fec4/4] == 0x5346332d || rom[0x1fec4/4] == 0x3347412d)
+		{
+			UINT32 ws_dip = input_port_read(machine,"WS");
+			if (!ws_dip) ws_dip = 0x00000000;
+			cps3_eeprom[0x020/4] &= 0xf0ffffff;
+			cps3_eeprom[0x050/4] &= 0xf0ffffff;
+			cps3_eeprom[0x020/4] |= ws_dip;
+			cps3_eeprom[0x050/4] |= ws_dip;
+		}
+	}
+
+	if (cps3_use_fastboot)
+	{
+		 fastboot_timer = timer_alloc(machine, fastboot_timer_callback, NULL);
+		 timer_adjust_oneshot(fastboot_timer, attotime_zero, 0);
+	}
 }
 
 
@@ -2446,28 +2620,56 @@ static void copy_from_nvram(running_machine *machine)
 static NVRAM_HANDLER( cps3 )
 {
 	int i;
+	UINT8 chd_flag = 0x00;
+	const rom_entry *region;
 
-	if (read_or_write)
+	for (region = machine->gamedrv->rom; region; region = rom_next_region(region))
 	{
-		//printf("read_write\n");
-		mame_fwrite(file, cps3_eeprom, 0x400);
-		for (i=0;i<48;i++)
-			nvram_handler_intelflash( machine, i, file, read_or_write );
+		if (ROMREGION_ISDISKDATA(region)) chd_flag = 0x01;
 	}
-	else if (file)
-	{
-		//printf("file\n");
-		mame_fread(file, cps3_eeprom, 0x400);
-		for (i=0;i<48;i++)
-			nvram_handler_intelflash( machine, i, file, read_or_write );
 
-		copy_from_nvram(machine); // copy data from flashroms back into user regions + decrypt into regions we execute/draw from.
+	if (chd_flag)
+	{
+		if (read_or_write)
+		{
+			//printf("read_write\n");
+			mame_fwrite(file, cps3_eeprom, 0x400);
+			for (i=0;i<48;i++)
+				nvram_handler_intelflash( machine, i, file, read_or_write );
+		}
+		else if (file)
+		{
+			//printf("file\n");
+			mame_fread(file, cps3_eeprom, 0x400);
+			for (i=0;i<48;i++)
+				nvram_handler_intelflash( machine, i, file, read_or_write );
+
+			copy_from_nvram(machine); // copy data from flashroms back into user regions + decrypt into regions we execute/draw from.
+		}
+		else
+		{
+			//printf("nothing?\n");
+			precopy_to_flash(machine); // attempt to copy data from user regions into flash roms (incase this is a NOCD set)
+			copy_from_nvram(machine); // copy data from flashroms back into user regions + decrypt into regions we execute/draw from.
+		}
 	}
 	else
 	{
-		//printf("nothing?\n");
-		precopy_to_flash(machine);  // attempt to copy data from user regions into flash roms (incase this is a NOCD set)
-		copy_from_nvram(machine); // copy data from flashroms back into user regions + decrypt into regions we execute/draw from.
+		if (read_or_write)
+		{
+			mame_fwrite(file, cps3_eeprom, 0x400);
+		}
+		else if (file)
+		{
+			mame_fread(file, cps3_eeprom, 0x400);
+			precopy_to_flash(machine);
+			copy_from_nvram(machine);
+		}
+		else
+		{
+			precopy_to_flash(machine);
+			copy_from_nvram(machine);
+		}
 	}
 
 
@@ -2568,6 +2770,7 @@ static MACHINE_DRIVER_START( cps3 )
 
 	MDRV_VIDEO_START(cps3)
 	MDRV_VIDEO_UPDATE(cps3)
+	MDRV_DEFAULT_LAYOUT(layout_cps3)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
@@ -2800,7 +3003,7 @@ ROM_END
 
 ROM_START( redeartn )
 	ROM_REGION32_BE( 0x080000, "user1", 0 ) /* bios region */
-	ROM_LOAD( "redearth_nocd.bios", 0x000000, 0x080000, NO_DUMP )
+	ROM_LOAD( "warzard_euro.29f400.u2", 0x000000, 0x080000, CRC(02e0f336) SHA1(acc37e830dfeb9674f5a0fb24f4cc23217ae4ff5) )
 
 	ROM_REGION32_BE( USER4REGION_LENGTH, "user4", ROMREGION_ERASEFF ) /* cd content region */
 	ROM_LOAD( "10",  0x000000, 0x800000, CRC(68188016) SHA1(93aaac08cb5566c33aabc16457085b0a36048019) )
@@ -2878,7 +3081,7 @@ ROM_END
     OCEANIA 7
     ASIA NCD 8
 
-    UINT32 *rom =  (UINT32*)memory_region ( machine, "user1" );
+	UINT32 *rom = (UINT32*)memory_region ( machine, "user1" );
     rom[0x1fed8/4]^=0x00000001; // clear region to 0 (invalid)
     rom[0x1fed8/4]^=0x00000008; // region 8 - ASIA NO CD - doesn't actually skip the CD
                                 // test on startup, only during game, must be another flag
@@ -2901,7 +3104,7 @@ ROM_END
     OCEANIA 7
     ASIA 8
 
-    // bios rom also lists korea, but game rom does not.
+	// bios rom also lists korea, but game rom does not.
 
     UINT32 *rom =  (UINT32*)memory_region ( machine, "user1" );
     rom[0x1fec8/4]^=0x00000001; // region (clear region)
@@ -2958,37 +3161,37 @@ ROM_END
 
 /* todo: use BIOS for the bios roms, having clones only for CD / No CD */
 
-GAME( 1997, sfiii,   0,        cps3, cps3, sfiii,  ROT0,   "Capcom", "Street Fighter III: New Generation (USA, 970204)", GAME_IMPERFECT_GRAPHICS )
-GAME( 1997, sfiiij,  sfiii,    cps3, cps3, sfiii,  ROT0,   "Capcom", "Street Fighter III: New Generation (Japan, 970204)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1997, sfiii,   0,        cps3, sfiiiws, sfiii,  ROT0,   "Capcom", "Street Fighter III: New Generation (USA, 970204)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1997, sfiiij,  sfiii,    cps3, sfiiiws, sfiii,  ROT0,   "Capcom", "Street Fighter III: New Generation (Japan, 970204)", GAME_IMPERFECT_GRAPHICS )
 
-GAME( 1997, sfiii2,  0,        cps3, cps3, sfiii2, ROT0,   "Capcom", "Street Fighter III 2nd Impact: Giant Attack (USA, 970930)", GAME_IMPERFECT_GRAPHICS )
-GAME( 1997, sfiii2j, sfiii2,   cps3, cps3, sfiii2, ROT0,   "Capcom", "Street Fighter III 2nd Impact: Giant Attack (Japan, 970930)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1997, sfiii2,  0,        cps3, sfiiiws, sfiii2, ROT0,   "Capcom", "Street Fighter III 2nd Impact: Giant Attack (USA, 970930)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1997, sfiii2j, sfiii2,   cps3, sfiiiws, sfiii2, ROT0,   "Capcom", "Street Fighter III 2nd Impact: Giant Attack (Japan, 970930)", GAME_IMPERFECT_GRAPHICS )
 
 GAME( 1999, sfiii3,  0,        cps3, cps3, sfiii3, ROT0,   "Capcom", "Street Fighter III 3rd Strike: Fight for the Future (USA, 990608)", GAME_IMPERFECT_GRAPHICS )
 GAME( 1999, sfiii3a, sfiii3,   cps3, cps3, sfiii3, ROT0,   "Capcom", "Street Fighter III 3rd Strike: Fight for the Future (USA, 990512)", GAME_IMPERFECT_GRAPHICS )
 
-GAME( 1998, jojo,    0,        cps3, cps3, jojo, ROT0,   "Capcom", "JoJo's Venture / JoJo no Kimyouna Bouken (Japan, 990108)", GAME_IMPERFECT_GRAPHICS )
-GAME( 1998, jojoa,   jojo,     cps3, cps3, jojo, ROT0,   "Capcom", "JoJo's Venture / JoJo no Kimyouna Bouken (Japan, 981202)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1998, jojo,    0,        cps3, jojo, jojo, ROT0,   "Capcom", "JoJo's Venture / JoJo no Kimyouna Bouken (Japan, 990108)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1998, jojoa,   jojo,     cps3, jojo, jojo, ROT0,   "Capcom", "JoJo's Venture / JoJo no Kimyouna Bouken (Japan, 981202)", GAME_IMPERFECT_GRAPHICS )
 
-GAME( 1999, jojoba,  0,        cps3, cps3, jojoba, ROT0,   "Capcom", "JoJo's Bizarre Adventure: Heritage for the Future / JoJo no Kimyouna Bouken: Miraie no Isan (Japan, 990913)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1999, jojoba,  0,        cps3, jojo, jojoba, ROT0,   "Capcom", "JoJo's Bizarre Adventure: Heritage for the Future / JoJo no Kimyouna Bouken: Miraie no Isan (Japan, 990913)", GAME_IMPERFECT_GRAPHICS )
 
-GAME( 1996, redearth,0,        cps3, cps3, redearth, ROT0,   "Capcom", "Red Earth (Euro, 961121)", GAME_IMPERFECT_GRAPHICS )
-GAME( 1996, warzard, redearth, cps3, cps3, redearth, ROT0,   "Capcom", "Warzard (Japan, 961121)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1996, redearth,0,        cps3, redearth, redearth, ROT0,   "Capcom", "Red Earth (Euro, 961121)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1996, warzard, redearth, cps3, redearth, redearth, ROT0,   "Capcom", "Warzard (Japan, 961121)", GAME_IMPERFECT_GRAPHICS )
 
 /* NO-CD sets */
 
-GAME( 1997, sfiiin,  sfiii,    cps3, cps3, sfiii, ROT0,   "Capcom", "Street Fighter III: New Generation (Asia, 970204, NO CD)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1997, sfiiin,  sfiii,    cps3, sfiiiws, sfiii, ROT0,   "Capcom", "Street Fighter III: New Generation (Asia, 970204, NO CD)", GAME_IMPERFECT_GRAPHICS )
 
-GAME( 1997, sfiii2n, sfiii2,   cps3, cps3, sfiii2, ROT0,   "Capcom", "Street Fighter III 2nd Impact: Giant Attack (Asia, 970930, NO CD)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1997, sfiii2n, sfiii2,   cps3, sfiiiws, sfiii2, ROT0,   "Capcom", "Street Fighter III 2nd Impact: Giant Attack (Asia, 970930, NO CD)", GAME_IMPERFECT_GRAPHICS )
 
 GAME( 1999, sfiii3n, sfiii3,   cps3, cps3, sfiii3, ROT0,   "Capcom", "Street Fighter III 3rd Strike: Fight for the Future (Japan, 990608, NO CD)", GAME_IMPERFECT_GRAPHICS )
 GAME( 1999, sfiii3an,sfiii3,   cps3, cps3, sfiii3, ROT0,   "Capcom", "Street Fighter III 3rd Strike: Fight for the Future (Japan, 990512, NO CD)", GAME_IMPERFECT_GRAPHICS )
 
-GAME( 1998, jojon,   jojo,     cps3, cps3, jojo, ROT0,   "Capcom", "JoJo's Venture / JoJo no Kimyouna Bouken (Asia, 990108, NO CD)", GAME_IMPERFECT_GRAPHICS )
-GAME( 1998, jojoan,  jojo,     cps3, cps3, jojo, ROT0,   "Capcom", "JoJo's Venture / JoJo no Kimyouna Bouken (Asia, 981202, NO CD)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1998, jojon,   jojo,     cps3, jojo, jojo, ROT0,   "Capcom", "JoJo's Venture / JoJo no Kimyouna Bouken (Asia, 990108, NO CD)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1998, jojoan,  jojo,     cps3, jojo, jojo, ROT0,   "Capcom", "JoJo's Venture / JoJo no Kimyouna Bouken (Asia, 981202, NO CD)", GAME_IMPERFECT_GRAPHICS )
 
-GAME( 1999, jojoban, jojoba,   cps3, cps3, jojoba, ROT0,   "Capcom", "JoJo's Bizarre Adventure: Heritage for the Future / JoJo no Kimyouna Bouken: Miraie no Isan (Japan, 990913, NO CD)", GAME_IMPERFECT_GRAPHICS )
-GAME( 1999, jojobane,jojoba,   cps3, cps3, jojoba, ROT0,   "Capcom", "JoJo's Bizarre Adventure: Heritage for the Future / JoJo no Kimyouna Bouken: Miraie no Isan (Euro, 990913, NO CD)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1999, jojoban, jojoba,   cps3, jojo, jojoba, ROT0,   "Capcom", "JoJo's Bizarre Adventure: Heritage for the Future / JoJo no Kimyouna Bouken: Miraie no Isan (Japan, 990913, NO CD)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1999, jojobane,jojoba,   cps3, jojo, jojoba, ROT0,   "Capcom", "JoJo's Bizarre Adventure: Heritage for the Future / JoJo no Kimyouna Bouken: Miraie no Isan (Euro, 990913, NO CD)", GAME_IMPERFECT_GRAPHICS )
 
 // We don't have any actual warzard / red earth no cd bios sets, but keep this here anyway
-GAME( 1996, redeartn,redearth, cps3, cps3, redearth, ROT0,   "Capcom", "Red Earth (961121, NO CD)", GAME_NOT_WORKING )
+GAME( 1996, redeartn,redearth, cps3, redeartn, nocd, ROT0,   "Capcom", "Red Earth (961121, NO CD)", GAME_IMPERFECT_GRAPHICS )

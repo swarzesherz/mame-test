@@ -99,9 +99,14 @@
 #include "ui.h"
 #include "uiinput.h"
 #include "debug/debugcon.h"
+#include "rendfont.h"
 
 #include <ctype.h>
 #include <time.h>
+
+#ifdef MAMEMESS
+#define MESS
+#endif /* MAMEMESS */
 
 /* temporary: set this to 1 to enable the originally defined behavior that
    a field specified via PORT_MODIFY which intersects a previously-defined
@@ -125,6 +130,9 @@
 #define JOYDIR_DOWN_BIT		(1 << JOYDIR_DOWN)
 #define JOYDIR_LEFT_BIT		(1 << JOYDIR_LEFT)
 #define JOYDIR_RIGHT_BIT	(1 << JOYDIR_RIGHT)
+
+#define AUTOFIRE_ON		1	/* Autofire enable bit */
+#define AUTOFIRE_TOGGLE		2	/* Autofire toggle enable bit */
 
 #define NUM_SIMUL_KEYS	(UCHAR_SHIFT_END - UCHAR_SHIFT_BEGIN + 1)
 #define LOG_INPUTX		0
@@ -217,7 +225,10 @@ struct _input_field_state
 	input_port_value			value;				/* current value of this port */
 	UINT8						impulse;			/* counter for impulse controls */
 	UINT8						last;				/* were we pressed last time? */
+	UINT8						toggle;				/* current toggle state */
 	UINT8						joydir;				/* digital joystick direction index */
+	int						autofire;			/* autofire */
+	int						autopressed;			/* autofire status */
 	char *						name;				/* overridden name */
 };
 
@@ -265,6 +276,9 @@ struct _input_port_private
 	/* playback/record information */
 	mame_file *					record_file;		/* recording file (NULL if not recording) */
 	mame_file *					playback_file;		/* playback file (NULL if not recording) */
+#ifdef INP_CAPTION
+	mame_file *					caption_file;		/* caption file for playback (NULL if not playing) */
+#endif /* INP_CAPTION */
 	UINT64						playback_accumulated_speed;/* accumulated speed during playback */
 	UINT32						playback_accumulated_frames;/* accumulated frames during playback */
 };
@@ -313,6 +327,26 @@ struct _char_info
 
 /* XML attributes for the different types */
 static const char *const seqtypestrings[] = { "standard", "decrement", "increment" };
+static int autofiredelay[MAX_PLAYERS];
+static int autofiretoggle[MAX_PLAYERS];
+
+#ifdef USE_CUSTOM_BUTTON
+UINT16 custom_button[MAX_PLAYERS][MAX_CUSTOM_BUTTONS];
+static const input_field_config *custom_button_info[MAX_PLAYERS][MAX_CUSTOM_BUTTONS];
+#endif /* USE_CUSTOM_BUTTON */
+
+#ifdef USE_SHOW_INPUT_LOG
+#define COMMAND_LOG_BUFSIZE	128
+
+input_log command_buffer[COMMAND_LOG_BUFSIZE];
+int show_input_log = 0;
+
+static void make_input_log(running_machine *machine);
+#endif /* USE_SHOW_INPUT_LOG */
+
+#ifdef INP_CAPTION
+static int next_caption_frame, caption_timer;
+#endif /* INP_CAPTION */
 
 
 static const char_info charinfo[] =
@@ -825,6 +859,10 @@ static void record_end(running_machine *machine, const char *message);
 static void record_frame(running_machine *machine, attotime curtime);
 static void record_port(const input_port_config *port);
 
+/* autofire */
+static int auto_pressed(running_machine *machine, const input_field_config *field);
+void input_port_list_custom(ioport_list &portlist, const input_port_token *tokens, char *errorbuf, int errorbuflen, int allocmap);
+
 
 
 /***************************************************************************
@@ -976,6 +1014,7 @@ time_t input_port_init(running_machine *machine, const input_port_token *tokens)
 	//input_port_private *portdata;
 	char errorbuf[1024];
 	time_t basetime;
+	int player;
 
 	/* allocate memory for our data structure */
 	machine->input_port_data = auto_alloc_clear(machine, input_port_private);
@@ -985,15 +1024,26 @@ time_t input_port_init(running_machine *machine, const input_port_token *tokens)
 	machine->add_notifier(MACHINE_NOTIFY_EXIT, input_port_exit);
 	machine->add_notifier(MACHINE_NOTIFY_FRAME, frame_update_callback);
 
+	for (player = 0; player < MAX_PLAYERS; player++)
+	{
+		autofiredelay[player] = 3;	//mamep: 1 is too short for some games
+		autofiretoggle[player] = 1;
+	}
+
+#ifdef USE_CUSTOM_BUTTON
+	memset(custom_button, 0, sizeof(custom_button));
+	memset(custom_button_info, 0, sizeof(custom_button_info));
+#endif /* USE_CUSTOM_BUTTON */
+
 	/* initialize the default port info from the OSD */
 	init_port_types(machine);
 
 	/* if we have a token list, proceed */
 	if (tokens != NULL)
 	{
-		input_port_list_init(machine->m_portlist, tokens, errorbuf, sizeof(errorbuf), TRUE);
+		input_port_list_custom(machine->m_portlist, tokens, errorbuf, sizeof(errorbuf), TRUE);
 		if (errorbuf[0] != 0)
-			mame_printf_error("Input port errors:\n%s", errorbuf);
+			mame_printf_error(_("Input port errors:\n%s"), errorbuf);
 		init_port_state(machine);
 	}
 
@@ -1144,6 +1194,8 @@ void input_field_get_user_settings(const input_field_config *field, input_field_
 		settings->centerdelta = field->state->analog->centerdelta;
 		settings->reverse = field->state->analog->reverse;
 	}
+	else
+		settings->autofire = field->state->autofire;
 }
 
 
@@ -1179,6 +1231,8 @@ void input_field_set_user_settings(const input_field_config *field, const input_
 		field->state->analog->centerdelta = settings->centerdelta;
 		field->state->analog->reverse = settings->reverse;
 	}
+	else
+		field->state->autofire = settings->autofire;
 }
 
 
@@ -1480,6 +1534,18 @@ const input_type_desc *input_type_list(running_machine *machine)
 }
 
 
+int has_record_file(running_machine *machine)
+{
+	return machine->input_port_data->record_file != NULL;
+}
+
+
+int has_playback_file(running_machine *machine)
+{
+	return machine->input_port_data->playback_file != NULL;
+}
+
+
 
 /***************************************************************************
     PORT READING
@@ -1566,7 +1632,7 @@ input_port_value input_port_read(running_machine *machine, const char *tag)
 {
 	const input_port_config *port = machine->port(tag);
 	if (port == NULL)
-		fatalerror("Unable to locate input port '%s'", tag);
+		fatalerror(_("Unable to locate input port '%s'"), tag);
 	return input_port_read_direct(port);
 }
 
@@ -1840,7 +1906,7 @@ const char *input_port_string_from_token(const input_port_token token)
 	for (index = 0; index < ARRAY_LENGTH(input_port_default_strings); index++)
 		if (input_port_default_strings[index].id == token.i)
 			return input_port_default_strings[index].string;
-	return "(Unknown Default)";
+	return _("(Unknown Default)");
 }
 
 
@@ -2048,6 +2114,11 @@ static void init_port_state(running_machine *machine)
 				fieldstate->seq[seqtype] = field->seq[seqtype];
 			fieldstate->value = field->defvalue;
 
+#ifdef USE_CUSTOM_BUTTON
+			if (field->type >= IPT_CUSTOM1 && field->type < IPT_CUSTOM1 + MAX_CUSTOM_BUTTONS)
+				custom_button_info[field->player][field->type - IPT_CUSTOM1] = field;
+#endif /* USE_CUSTOM_BUTTON */
+
 			/* if this is an analog field, allocate memory for the analog data */
 			if (field->type >= __ipt_analog_start && field->type <= __ipt_analog_end)
 			{
@@ -2153,7 +2224,7 @@ static void init_autoselect_devices(const ioport_list &portlist, int type1, int 
 		return;
 	}
 	else if (strcmp(stemp, "keyboard") != 0)
-		mame_printf_error("Invalid %s value %s; reverting to keyboard\n", option, stemp);
+		mame_printf_error(_("Invalid %s value %s; reverting to keyboard\n"), option, stemp);
 
 	/* only scan the list if we haven't already enabled this class of control */
 	if (portlist.first() != NULL && !input_device_class_enabled(portlist.first()->machine, autoenable))
@@ -2165,7 +2236,7 @@ static void init_autoselect_devices(const ioport_list &portlist, int type1, int 
 					(type2 != 0 && field->type == type2) ||
 					(type3 != 0 && field->type == type3))
 				{
-					mame_printf_verbose("Input: Autoenabling %s due to presence of a %s\n", autostring, ananame);
+					mame_printf_verbose(_("Input: Autoenabling %s due to presence of a %s\n"), autostring, ananame);
 					input_device_class_enable(port->machine, autoenable, TRUE);
 					break;
 				}
@@ -2289,7 +2360,7 @@ static analog_field_state *init_field_analog_state(const input_field_config *fie
 			break;
 
 		default:
-			fatalerror("Unknown analog port type -- don't know if it is absolute or not");
+			fatalerror(_("Unknown analog port type -- don't know if it is absolute or not"));
 			break;
 	}
 
@@ -2509,6 +2580,24 @@ profiler_mark_start(PROFILER_INPUT);
 		for (field = port->fieldlist; field != NULL; field = field->next)
 			if (input_condition_true(port->machine, &field->condition))
 			{
+#ifdef USE_CUSTOM_BUTTON
+				/* update autofire status */
+				if (field->type >= IPT_CUSTOM1 && field->type < IPT_CUSTOM1 + MAX_CUSTOM_BUTTONS)
+				{
+					if (input_seq_pressed(machine, input_field_seq(field, SEQ_TYPE_STANDARD)))
+					{
+						if (field->state->autopressed > autofiredelay[field->player])
+							field->state->autopressed = 0;
+
+						field->state->autopressed ++;
+					}
+					else
+						field->state->autopressed = 0;
+
+					continue;
+				}
+#endif /* USE_CUSTOM_BUTTON */
+
 				/* accumulate VBLANK bits */
 				if (field->type == IPT_VBLANK)
 					port->state->vblank ^= field->mask;
@@ -2545,6 +2634,12 @@ profiler_mark_start(PROFILER_INPUT);
 				}
 			}
 	}
+
+#ifdef USE_SHOW_INPUT_LOG
+	/* show input log */
+	if (show_input_log && (portdata->playback_file == NULL))
+		make_input_log(machine);
+#endif /* USE_SHOW_INPUT_LOG */
 
 profiler_mark_end();
 }
@@ -2785,7 +2880,8 @@ static void frame_update_analog_field(running_machine *machine, analog_field_sta
 
 static int frame_get_digital_field_state(const input_field_config *field, int mouse_down)
 {
-	int curstate = mouse_down || input_seq_pressed(field->port->machine, input_field_seq(field, SEQ_TYPE_STANDARD));
+//	int curstate = mouse_down || input_seq_pressed(field->port->machine, input_field_seq(field, SEQ_TYPE_STANDARD));
+	int curstate = auto_pressed(field->port->machine, field);
 	int changed = FALSE;
 
 	/* if the state changed, look for switch down/switch up */
@@ -2809,7 +2905,10 @@ static int frame_get_digital_field_state(const input_field_config *field, int mo
 		if (field->flags & FIELD_FLAG_TOGGLE)
 		{
 			if (field->settinglist == NULL)
+			{
 				field->state->value ^= field->mask;
+				field->state->toggle = !field->state->toggle;
+			}
 			else
 				input_field_select_next_setting(field);
 		}
@@ -2843,7 +2942,7 @@ static int frame_get_digital_field_state(const input_field_config *field, int mo
 	/* skip locked-out coin inputs */
 	if (curstate && field->type >= IPT_COIN1 && field->type <= IPT_COIN12 && coin_lockout_get_state(field->port->machine, field->type - IPT_COIN1) && options_get_bool(mame_options(), OPTION_COIN_LOCKOUT))
 	{
-		ui_popup_time(3, "Coinlock disabled %s.", input_field_name(field));
+		ui_popup_time(3, _("Coinlock disabled %s."), _(input_field_name(field)));
 		return FALSE;
 	}
 	return curstate;
@@ -3417,8 +3516,9 @@ static void port_config_detokenize(ioport_list &portlist, const input_port_token
 					TOKEN_SKIP_STRING(ipt);
 					break;
 				}
-				TOKEN_GET_UINT64_UNPACK2(ipt, entrytype, 8, defval, 32);
+				TOKEN_GET_UINT64_UNPACK3(ipt, entrytype, 8, defval, 32, category, 16);
 				cursetting = setting_config_alloc(curfield, defval & curfield->mask, input_port_string_from_token(*ipt++));
+				cursetting->category = category;
 				break;
 
 			/* configuration definition */
@@ -3498,7 +3598,7 @@ static void port_config_detokenize(ioport_list &portlist, const input_port_token
 				break;
 
 			default:
-				error_buf_append(errorbuf, errorbuflen, "Invalid token %d in input ports\n", entrytype);
+				error_buf_append(errorbuf, errorbuflen, _("Invalid token %d in input ports\n"), entrytype);
 				break;
 		}
 	}
@@ -3943,6 +4043,17 @@ static void load_config_callback(running_machine *machine, int config_type, xml_
 			load_game_config(machine, portnode, type, player, newseq);
 	}
 
+	if (config_type == CONFIG_TYPE_GAME)
+	{
+		for (portnode = xml_get_sibling(parentnode->child, "autofire"); portnode; portnode = xml_get_sibling(portnode->next, "autofire"))
+		{
+			int player = xml_get_attribute_int(portnode, "player", 0);
+
+			if (player > 0 && player <= MAX_PLAYERS)
+				autofiredelay[player - 1] = xml_get_attribute_int(portnode, "delay", 3);
+		}
+	}
+
 	/* after applying the controller config, push that back into the backup, since that is */
 	/* what we will diff against */
 	if (config_type == CONFIG_TYPE_CONTROLLER)
@@ -4086,7 +4197,20 @@ static int load_game_config(running_machine *machine, xml_data_node *portnode, i
 
 					/* for non-analog fields, fetch the value */
 					if (field->state->analog == NULL)
+					{
 						field->state->value = xml_get_attribute_int(portnode, "value", field->defvalue);
+						if (strcmp(xml_get_attribute_string(portnode, "autofire", "off"), "on") == 0)
+							field->state->autofire = AUTOFIRE_ON;
+						else if (strcmp(xml_get_attribute_string(portnode, "autofire", "off"), "toggle") == 0)
+							field->state->autofire = AUTOFIRE_TOGGLE;
+						else
+							field->state->autofire = 0;
+
+#ifdef USE_CUSTOM_BUTTON
+						if (field->type >= IPT_CUSTOM1 && field->type < IPT_CUSTOM1 + MAX_CUSTOM_BUTTONS)
+							custom_button[field->player][field->type - IPT_CUSTOM1] = xml_get_attribute_int(portnode, "custom", 0);
+#endif /* USE_CUSTOM_BUTTON */
+					}
 
 					/* for analog fields, fetch configurable analog attributes */
 					else
@@ -4228,6 +4352,7 @@ static void save_game_inputs(running_machine *machine, xml_data_node *parentnode
 {
 	const input_field_config *field;
 	const input_port_config *port;
+	int portnum;
 
 	/* iterate over ports */
 	for (port = machine->m_portlist.first(); port != NULL; port = port->next())
@@ -4243,7 +4368,14 @@ static void save_game_inputs(running_machine *machine, xml_data_node *parentnode
 
 				/* non-analog changes */
 				if (field->state->analog == NULL)
+				{
 					changed |= ((field->state->value & field->mask) != (field->defvalue & field->mask));
+					changed |= field->state->autofire;
+#ifdef USE_CUSTOM_BUTTON
+					changed |= field->type >= IPT_CUSTOM1 && field->type < IPT_CUSTOM1 + MAX_CUSTOM_BUTTONS &&
+						custom_button[field->player][field->type - IPT_CUSTOM1];
+#endif /* USE_CUSTOM_BUTTON */
+				}
 
 				/* analog changes */
 				else
@@ -4279,6 +4411,17 @@ static void save_game_inputs(running_machine *machine, xml_data_node *parentnode
 						{
 							if ((field->state->value & field->mask) != (field->defvalue & field->mask))
 								xml_set_attribute_int(portnode, "value", field->state->value & field->mask);
+
+							if (field->state->autofire & AUTOFIRE_ON)
+								xml_set_attribute(portnode, "autofire", "on");
+							else if (field->state->autofire & AUTOFIRE_TOGGLE)
+								xml_set_attribute(portnode, "autofire", "toggle");
+
+#ifdef USE_CUSTOM_BUTTON
+							if (field->type >= IPT_CUSTOM1 && field->type < IPT_CUSTOM1 + MAX_CUSTOM_BUTTONS &&
+							    custom_button[field->player][field->type - IPT_CUSTOM1])
+								xml_set_attribute_int(portnode, "custom", custom_button[field->player][field->type - IPT_CUSTOM1]);
+#endif /* USE_CUSTOM_BUTTON */
 						}
 
 						/* write out analog changes */
@@ -4296,6 +4439,19 @@ static void save_game_inputs(running_machine *machine, xml_data_node *parentnode
 					}
 				}
 			}
+
+	for (portnum = 0; portnum < MAX_PLAYERS; portnum++)
+	{
+		if (autofiredelay[portnum] != 3)
+		{
+			xml_data_node *childnode = xml_add_child(parentnode, "autofire", NULL);
+			if (childnode)
+			{
+				xml_set_attribute_int(childnode, "player", portnum + 1);
+				xml_set_attribute_int(childnode, "delay", autofiredelay[portnum]);
+			}
+		}
+	}
 }
 
 
@@ -4321,7 +4477,7 @@ static UINT8 playback_read_uint8(running_machine *machine)
 	/* read the value; if we fail, end playback */
 	if (mame_fread(portdata->playback_file, &result, sizeof(result)) != sizeof(result))
 	{
-		playback_end(machine, "End of file");
+		playback_end(machine, _("End of file"));
 		return 0;
 	}
 
@@ -4347,7 +4503,7 @@ static UINT32 playback_read_uint32(running_machine *machine)
 	/* read the value; if we fail, end playback */
 	if (mame_fread(portdata->playback_file, &result, sizeof(result)) != sizeof(result))
 	{
-		playback_end(machine, "End of file");
+		playback_end(machine, _("End of file"));
 		return 0;
 	}
 
@@ -4373,7 +4529,7 @@ static UINT64 playback_read_uint64(running_machine *machine)
 	/* read the value; if we fail, end playback */
 	if (mame_fread(portdata->playback_file, &result, sizeof(result)) != sizeof(result))
 	{
-		playback_end(machine, "End of file");
+		playback_end(machine, _("End of file"));
 		return 0;
 	}
 
@@ -4394,6 +4550,11 @@ static time_t playback_init(running_machine *machine)
 	file_error filerr;
 	time_t basetime;
 
+#ifdef INP_CAPTION
+	next_caption_frame = -1;
+	caption_timer = 0;
+#endif /* INP_CAPTION */
+
 	/* if no file, nothing to do */
 	if (filename[0] == 0)
 		return 0;
@@ -4404,23 +4565,37 @@ static time_t playback_init(running_machine *machine)
 
 	/* read the header and verify that it is a modern version; if not, print an error */
 	if (mame_fread(portdata->playback_file, header, sizeof(header)) != sizeof(header))
-		fatalerror("Input file is corrupt or invalid (missing header)");
+		fatalerror(_("Input file is corrupt or invalid (missing header)"));
 	if (memcmp(header, "MAMEINP\0", 8) != 0)
-		fatalerror("Input file invalid or in an older, unsupported format");
+		fatalerror(_("Input file invalid or in an older, unsupported format"));
 	if (header[0x10] != INP_HEADER_MAJVERSION)
-		fatalerror("Input file format version mismatch");
+		fatalerror(_("Input file format version mismatch"));
 
 	/* output info to console */
-	mame_printf_info("Input file: %s\n", filename);
-	mame_printf_info("INP version %d.%d\n", header[0x10], header[0x11]);
+	mame_printf_info(_("Input file: %s\n"), filename);
+	mame_printf_info(_("INP version %d.%d\n"), header[0x10], header[0x11]);
 	basetime = header[0x08] | (header[0x09] << 8) | (header[0x0a] << 16) | (header[0x0b] << 24) |
 				((UINT64)header[0x0c] << 32) | ((UINT64)header[0x0d] << 40) | ((UINT64)header[0x0e] << 48) | ((UINT64)header[0x0f] << 56);
-	mame_printf_info("Created %s", ctime(&basetime));
-	mame_printf_info("Recorded using %s\n", header + 0x20);
+	mame_printf_info(_("Created %s"), ctime(&basetime));
+	mame_printf_info(_("Recorded using %s\n"), header + 0x20);
 
 	/* verify the header against the current game */
 	if (memcmp(machine->gamedrv->name, header + 0x14, strlen(machine->gamedrv->name) + 1) != 0)
-		fatalerror("Input file is for " GAMENOUN " '%s', not for current " GAMENOUN " '%s'\n", header + 0x14, machine->gamedrv->name);
+		fatalerror(_("Input file is for " GAMENOUN " '%s', not for current " GAMENOUN " '%s'\n"), header + 0x14, machine->gamedrv->name);
+
+#ifdef INP_CAPTION
+	if (strlen(filename) > 4)
+	{
+		char *fname = mame_strdup(filename);
+
+		if (fname)
+		{
+			strcpy(fname + strlen(fname) - 4, ".cap");
+			filerr = mame_fopen(SEARCHPATH_INPUTLOG, fname, OPEN_FLAG_READ, &portdata->caption_file);
+			global_free(fname);
+		}
+	}
+#endif /* INP_CAPTION */
 
 	/* enable compression */
 	mame_fcompress(portdata->playback_file, FCOMPRESS_MEDIUM);
@@ -4444,14 +4619,20 @@ static void playback_end(running_machine *machine, const char *message)
 		mame_fclose(portdata->playback_file);
 		portdata->playback_file = NULL;
 
+#ifdef INP_CAPTION
+		if (portdata->caption_file != NULL)
+			mame_fclose(portdata->caption_file);
+		portdata->caption_file = NULL;
+#endif /* INP_CAPTION */
+
 		/* pop a message */
 		if (message != NULL)
-			popmessage("Playback Ended\nReason: %s", message);
+			popmessage(_("Playback Ended\nReason: %s"), message);
 
 		/* display speed stats */
 		portdata->playback_accumulated_speed /= portdata->playback_accumulated_frames;
-		mame_printf_info("Total playback frames: %d\n", (UINT32)portdata->playback_accumulated_frames);
-		mame_printf_info("Average recorded speed: %d%%\n", (UINT32)((portdata->playback_accumulated_speed * 200 + 1) >> 21));
+		mame_printf_info(_("Total playback frames: %d\n"), (UINT32)portdata->playback_accumulated_frames);
+		mame_printf_info(_("Average recorded speed: %d%%\n"), (UINT32)((portdata->playback_accumulated_speed * 200 + 1) >> 21));
 	}
 }
 
@@ -4474,7 +4655,7 @@ static void playback_frame(running_machine *machine, attotime curtime)
 		readtime.seconds = playback_read_uint32(machine);
 		readtime.attoseconds = playback_read_uint64(machine);
 		if (attotime_compare(readtime, curtime) != 0)
-			playback_end(machine, "Out of sync");
+			playback_end(machine, _("Out of sync"));
 
 		/* then the speed */
 		portdata->playback_accumulated_speed += playback_read_uint32(machine);
@@ -4536,7 +4717,7 @@ static void record_write_uint8(running_machine *machine, UINT8 data)
 
 	/* read the value; if we fail, end playback */
 	if (mame_fwrite(portdata->record_file, &result, sizeof(result)) != sizeof(result))
-		record_end(machine, "Out of space");
+		record_end(machine, _("Out of space"));
 }
 
 
@@ -4556,7 +4737,7 @@ static void record_write_uint32(running_machine *machine, UINT32 data)
 
 	/* read the value; if we fail, end playback */
 	if (mame_fwrite(portdata->record_file, &result, sizeof(result)) != sizeof(result))
-		record_end(machine, "Out of space");
+		record_end(machine, _("Out of space"));
 }
 
 
@@ -4576,7 +4757,7 @@ static void record_write_uint64(running_machine *machine, UINT64 data)
 
 	/* read the value; if we fail, end playback */
 	if (mame_fwrite(portdata->record_file, &result, sizeof(result)) != sizeof(result))
-		record_end(machine, "Out of space");
+		record_end(machine, _("Out of space"));
 }
 
 
@@ -4644,7 +4825,7 @@ static void record_end(running_machine *machine, const char *message)
 
 		/* pop a message */
 		if (message != NULL)
-			popmessage("Recording Ended\nReason: %s", message);
+			popmessage(_("Recording Ended\nReason: %s"), message);
 	}
 }
 
@@ -5575,3 +5756,546 @@ static void execute_dumpkbd(running_machine *machine, int ref, int params, const
 		fclose(file);
 
 }
+
+
+
+/*-------------------------------------------------
+    input_port_list_custom - initialize an input
+    port list structure and allocate ports
+    according to the given tokens
+-------------------------------------------------*/
+
+void input_port_list_custom(ioport_list &portlist, const input_port_token *tokens, char *errorbuf, int errorbuflen, int allocmap)
+{
+	const input_port_config *port;
+	const input_field_config *field;
+	int nplayer = 0;
+
+	static INPUT_PORTS_START( custom1p )
+		PORT_START("CUSTOM1P")
+		PORT_BIT( 1 << 0, IP_ACTIVE_HIGH, IPT_TOGGLE_AUTOFIRE ) PORT_PLAYER(1) PORT_TOGGLE
+#ifdef USE_CUSTOM_BUTTON
+		PORT_BIT( 0, IP_ACTIVE_LOW, IPT_CUSTOM1 ) PORT_PLAYER(1)
+		PORT_BIT( 0, IP_ACTIVE_LOW, IPT_CUSTOM2 ) PORT_PLAYER(1)
+		PORT_BIT( 0, IP_ACTIVE_LOW, IPT_CUSTOM3 ) PORT_PLAYER(1)
+		PORT_BIT( 0, IP_ACTIVE_LOW, IPT_CUSTOM4 ) PORT_PLAYER(1)
+#endif /* USE_CUSTOM_BUTTON */
+	INPUT_PORTS_END
+
+	static INPUT_PORTS_START( custom2p )
+		PORT_START("CUSTOM2P")
+		PORT_BIT( 1 << 1, IP_ACTIVE_HIGH, IPT_TOGGLE_AUTOFIRE ) PORT_PLAYER(2) PORT_TOGGLE
+#ifdef USE_CUSTOM_BUTTON
+		PORT_BIT( 0, IP_ACTIVE_LOW, IPT_CUSTOM1 ) PORT_PLAYER(2)
+		PORT_BIT( 0, IP_ACTIVE_LOW, IPT_CUSTOM2 ) PORT_PLAYER(2)
+		PORT_BIT( 0, IP_ACTIVE_LOW, IPT_CUSTOM3 ) PORT_PLAYER(2)
+		PORT_BIT( 0, IP_ACTIVE_LOW, IPT_CUSTOM4 ) PORT_PLAYER(2)
+#endif /* USE_CUSTOM_BUTTON */
+	INPUT_PORTS_END
+
+	static INPUT_PORTS_START( custom3p )
+		PORT_START("CUSTOM3P")
+		PORT_BIT( 1 << 2, IP_ACTIVE_HIGH, IPT_TOGGLE_AUTOFIRE ) PORT_PLAYER(3) PORT_TOGGLE
+#ifdef USE_CUSTOM_BUTTON
+		PORT_BIT( 0, IP_ACTIVE_LOW, IPT_CUSTOM1 ) PORT_PLAYER(3)
+		PORT_BIT( 0, IP_ACTIVE_LOW, IPT_CUSTOM2 ) PORT_PLAYER(3)
+		PORT_BIT( 0, IP_ACTIVE_LOW, IPT_CUSTOM3 ) PORT_PLAYER(3)
+		PORT_BIT( 0, IP_ACTIVE_LOW, IPT_CUSTOM4 ) PORT_PLAYER(3)
+#endif /* USE_CUSTOM_BUTTON */
+	INPUT_PORTS_END
+
+	static INPUT_PORTS_START( custom4p )
+		PORT_START("CUSTOM4P")
+		PORT_BIT( 1 << 3, IP_ACTIVE_HIGH, IPT_TOGGLE_AUTOFIRE ) PORT_PLAYER(4) PORT_TOGGLE
+#ifdef USE_CUSTOM_BUTTON
+		PORT_BIT( 0, IP_ACTIVE_LOW, IPT_CUSTOM1 ) PORT_PLAYER(4)
+		PORT_BIT( 0, IP_ACTIVE_LOW, IPT_CUSTOM2 ) PORT_PLAYER(4)
+		PORT_BIT( 0, IP_ACTIVE_LOW, IPT_CUSTOM3 ) PORT_PLAYER(4)
+		PORT_BIT( 0, IP_ACTIVE_LOW, IPT_CUSTOM4 ) PORT_PLAYER(4)
+#endif /* USE_CUSTOM_BUTTON */
+	INPUT_PORTS_END
+
+	static INPUT_PORTS_START( custom5p )
+		PORT_START("CUSTOM5P")
+		PORT_BIT( 1 << 4, IP_ACTIVE_HIGH, IPT_TOGGLE_AUTOFIRE ) PORT_PLAYER(5) PORT_TOGGLE
+#ifdef USE_CUSTOM_BUTTON
+		PORT_BIT( 0, IP_ACTIVE_LOW, IPT_CUSTOM1 ) PORT_PLAYER(5)
+		PORT_BIT( 0, IP_ACTIVE_LOW, IPT_CUSTOM2 ) PORT_PLAYER(5)
+		PORT_BIT( 0, IP_ACTIVE_LOW, IPT_CUSTOM3 ) PORT_PLAYER(5)
+		PORT_BIT( 0, IP_ACTIVE_LOW, IPT_CUSTOM4 ) PORT_PLAYER(5)
+#endif /* USE_CUSTOM_BUTTON */
+	INPUT_PORTS_END
+
+	static INPUT_PORTS_START( custom6p )
+		PORT_START("CUSTOM6P")
+		PORT_BIT( 1 << 5, IP_ACTIVE_HIGH, IPT_TOGGLE_AUTOFIRE ) PORT_PLAYER(6) PORT_TOGGLE
+#ifdef USE_CUSTOM_BUTTON
+		PORT_BIT( 0, IP_ACTIVE_LOW, IPT_CUSTOM1 ) PORT_PLAYER(6)
+		PORT_BIT( 0, IP_ACTIVE_LOW, IPT_CUSTOM2 ) PORT_PLAYER(6)
+		PORT_BIT( 0, IP_ACTIVE_LOW, IPT_CUSTOM3 ) PORT_PLAYER(6)
+		PORT_BIT( 0, IP_ACTIVE_LOW, IPT_CUSTOM4 ) PORT_PLAYER(6)
+#endif /* USE_CUSTOM_BUTTON */
+	INPUT_PORTS_END
+
+	static INPUT_PORTS_START( custom7p )
+		PORT_START("CUSTOM7P")
+		PORT_BIT( 1 << 6, IP_ACTIVE_HIGH, IPT_TOGGLE_AUTOFIRE ) PORT_PLAYER(7) PORT_TOGGLE
+#ifdef USE_CUSTOM_BUTTON
+		PORT_BIT( 0, IP_ACTIVE_LOW, IPT_CUSTOM1 ) PORT_PLAYER(7)
+		PORT_BIT( 0, IP_ACTIVE_LOW, IPT_CUSTOM2 ) PORT_PLAYER(7)
+		PORT_BIT( 0, IP_ACTIVE_LOW, IPT_CUSTOM3 ) PORT_PLAYER(7)
+		PORT_BIT( 0, IP_ACTIVE_LOW, IPT_CUSTOM4 ) PORT_PLAYER(7)
+#endif /* USE_CUSTOM_BUTTON */
+	INPUT_PORTS_END
+
+	static INPUT_PORTS_START( custom8p )
+		PORT_START("CUSTOM8P")
+		PORT_BIT( 1 << 7, IP_ACTIVE_HIGH, IPT_TOGGLE_AUTOFIRE ) PORT_PLAYER(8) PORT_TOGGLE
+#ifdef USE_CUSTOM_BUTTON
+		PORT_BIT( 0, IP_ACTIVE_LOW, IPT_CUSTOM1 ) PORT_PLAYER(8)
+		PORT_BIT( 0, IP_ACTIVE_LOW, IPT_CUSTOM2 ) PORT_PLAYER(8)
+		PORT_BIT( 0, IP_ACTIVE_LOW, IPT_CUSTOM3 ) PORT_PLAYER(8)
+		PORT_BIT( 0, IP_ACTIVE_LOW, IPT_CUSTOM4 ) PORT_PLAYER(8)
+#endif /* USE_CUSTOM_BUTTON */
+	INPUT_PORTS_END
+
+	/* no tokens, no list */
+	if (tokens == NULL)
+		return;
+
+	/* reset error buffer */
+	if (errorbuf != NULL)
+		*errorbuf = 0;
+
+	/* detokenize into the list */
+	port_config_detokenize(portlist, tokens, errorbuf, errorbuflen);
+
+	// calc total players
+	for (port = portlist.first(); port != NULL; port = port->next())
+		for (field = port->fieldlist; field != NULL; field = field->next)
+		{
+			if (nplayer < field->player+1)
+				nplayer = field->player+1;
+		}
+
+	// mamep: append custom ports if needed
+	if (nplayer > 0)
+		port_config_detokenize(portlist, ipt_custom1p, errorbuf, errorbuflen);
+	if (nplayer > 1)
+		port_config_detokenize(portlist, ipt_custom2p, errorbuf, errorbuflen);
+	if (nplayer > 2)
+		port_config_detokenize(portlist, ipt_custom3p, errorbuf, errorbuflen);
+	if (nplayer > 3)
+		port_config_detokenize(portlist, ipt_custom4p, errorbuf, errorbuflen);
+	if (nplayer > 4)
+		port_config_detokenize(portlist, ipt_custom5p, errorbuf, errorbuflen);
+	if (nplayer > 5)
+		port_config_detokenize(portlist, ipt_custom6p, errorbuf, errorbuflen);
+	if (nplayer > 6)
+		port_config_detokenize(portlist, ipt_custom7p, errorbuf, errorbuflen);
+	if (nplayer > 7)
+		port_config_detokenize(portlist, ipt_custom8p, errorbuf, errorbuflen);
+}
+
+
+
+static int auto_pressed(running_machine *machine, const input_field_config *field)
+{
+/*
+	autofire setting:
+	 delay,  on, off
+	     1,   1,   1
+	     2,   2,   1
+	     3,   2,   2
+	     4,   3,   2
+	     5,   3,   3
+	     6,   4,   3
+*/
+
+#define IS_AUTOKEY(field)	((field->state->autofire & AUTOFIRE_ON) \
+							|| ((field->state->autofire & AUTOFIRE_TOGGLE) \
+							&& autofiretoggle[field->player]))
+
+	int pressed = input_seq_pressed(machine, input_field_seq(field, SEQ_TYPE_STANDARD));
+	int is_auto = IS_AUTOKEY(field);
+
+	if (pressed && (field->flags & FIELD_FLAG_TOGGLE))
+		autofiretoggle[field->player] = field->state->toggle;
+
+#ifdef USE_CUSTOM_BUTTON
+	if (field->type >= IPT_BUTTON1 && field->type < IPT_BUTTON1 + MAX_NORMAL_BUTTONS)
+	{
+		UINT16 button_mask = 1 << (field->type - IPT_BUTTON1);
+		input_field_config temp;
+
+		int custom;
+		for (custom = 0; custom < MAX_CUSTOM_BUTTONS; custom++)
+			if (custom_button[field->player][custom] & button_mask)
+			{
+				const input_field_config *custom_info = custom_button_info[field->player][custom];
+
+				if (input_seq_pressed(machine, input_field_seq(custom_info, SEQ_TYPE_STANDARD)))
+				{
+					if (IS_AUTOKEY(custom_info))
+					{
+						if (pressed)
+							is_auto &= 1;
+						else
+							is_auto = 1;
+
+						temp = *custom_info;
+						field = &temp;
+					}
+					else
+						is_auto = 0;
+
+					pressed = 1;
+				}
+			}
+	}
+#endif /* USE_CUSTOM_BUTTON */
+
+	if (is_auto)
+	{
+		if (pressed)
+		{
+			if (field->state->autopressed > autofiredelay[field->player])
+				field->state->autopressed = 0;
+			else if (field->state->autopressed > autofiredelay[field->player] / 2)
+				pressed = 0;
+
+			field->state->autopressed ++;
+		}
+		else
+			field->state->autopressed = 0;
+	}
+
+	return pressed;
+
+#undef IS_AUTOKEY
+}
+
+
+
+int get_autofiredelay(int player)
+{
+	return autofiredelay[player];
+}
+
+void set_autofiredelay(int player, int delay)
+{
+	autofiredelay[player] = delay;
+}
+
+
+
+#ifdef USE_SHOW_INPUT_LOG
+INLINE void copy_command_buffer(running_machine *machine, char log)
+{
+	char buf[UTF8_CHAR_MAX + 1];
+	unicode_char uchar;
+	int len;
+
+	for (len = 0; command_buffer[len].code; len++)
+		;
+
+	if (len >= ARRAY_LENGTH(command_buffer) - 1)
+	{
+		int i;
+
+		for (i = 0; command_buffer[i + 1].code; i++)
+			command_buffer[i] = command_buffer[i + 1];
+
+		command_buffer[--len].code = '\0';
+	}
+
+	buf[0] = '_';
+	buf[1] = log;
+	buf[2] = '\0';
+	convert_command_glyph(buf, ARRAY_LENGTH(buf));
+
+	if (uchar_from_utf8(&uchar, buf, ARRAY_LENGTH(buf)) == -1)
+		return;
+
+	command_buffer[len].code = uchar;
+	command_buffer[len].time = attotime_to_double(timer_get_time(machine));
+	command_buffer[++len].code = '\0';
+}
+
+
+
+static void make_input_log(running_machine *machine)
+{
+	input_port_private *portdata = machine->input_port_data;
+	const input_port_config *port;
+	int i;
+	int player = 0; /* player 1 */
+	int normal_buttons = 6;
+
+	/* loop over all the joysticks for player 1*/
+	if (player == 0) /* player 1 */
+	{
+		int joyindex;
+		static int old_dir = -1;
+		static int now_dir = 0;
+
+		for (joyindex = 0; joyindex < DIGITAL_JOYSTICKS_PER_PLAYER; joyindex++)
+		{
+			digital_joystick_state *joystick = &portdata->joystick_info[player][joyindex];
+
+			if (joystick->inuse)
+			{
+				/* set the status of neutral (assumed to be only in the defaults) */
+				now_dir = 0;
+
+				/* if this is a digital joystick type, apply 4-way rules */
+				switch(joystick->current)
+				{
+					case JOYDIR_DOWN_BIT:
+						now_dir = 2;
+						break;
+					case JOYDIR_LEFT_BIT:
+						now_dir = 4;
+						break;
+					case JOYDIR_RIGHT_BIT:
+						now_dir = 6;
+						break;
+					case JOYDIR_UP_BIT:
+						now_dir = 8;
+						break;
+				}
+
+				/* if this is a digital joystick type, apply 8-way rules */
+				//if (portentry->way == 8)
+				switch(joystick->current)
+				{
+					case JOYDIR_DOWN_BIT | JOYDIR_LEFT_BIT:
+						now_dir = 1;
+						break;
+					case JOYDIR_DOWN_BIT | JOYDIR_RIGHT_BIT:
+						now_dir = 3;
+						break;
+					case JOYDIR_UP_BIT | JOYDIR_LEFT_BIT:
+						now_dir = 7;
+						break;
+					case JOYDIR_UP_BIT | JOYDIR_RIGHT_BIT:
+						now_dir = 9;
+						break;
+				}
+
+				/* if we're not pressed, reset old_dir = -1 */
+				if (now_dir == 0)
+					old_dir = -1;
+			}
+		}
+
+		/* if this is the first press, show input log */
+		if (old_dir != now_dir)
+		{
+			if (now_dir != 0)
+			{
+				char colorbutton = '0';
+				copy_command_buffer(machine, colorbutton + now_dir);
+				old_dir = now_dir;
+			}
+		}
+	}
+	/* End of loop over all the joysticks for player 1*/
+
+	/* loop over all the buttons */
+	if (normal_buttons > 0)
+	{
+		int is_neogeo = !mame_stricmp(machine->gamedrv->source_file+17, "neogeo.c")
+		                || !mame_stricmp(machine->gamedrv->source_file+17, "neodrvr.c");
+		static UINT16 old_btn = 0;
+		static UINT16 now_btn;
+		int is_pressed = 0;
+
+		now_btn = 0;
+
+		for (port = machine->m_portlist.first(); port != NULL; port = port->next())
+		{
+			const input_field_config *field;
+
+			for (field = port->fieldlist; field != NULL; field = field->next)
+			{
+				/* if this is current player, read input port */
+				if (field->player == player && input_seq_pressed(machine, input_field_seq(field, SEQ_TYPE_STANDARD)))
+				{
+					/* if this is normal buttons type, apply usable buttons */
+					if ((field->type >= IPT_BUTTON1) && (field->type < IPT_BUTTON1 + normal_buttons))
+						now_btn |= 1 << (field->type - IPT_BUTTON1);
+
+					/* if this is start button type */
+					else if ((field->type == IPT_START1) || (field->type == IPT_START))
+							now_btn |= 1 << normal_buttons;
+
+					/* if this is select button type (MESS only) */
+					else if (field->type == IPT_SELECT)
+						now_btn |= 1 << (normal_buttons + 1);
+				}
+			}
+		}
+
+#ifdef USE_CUSTOM_BUTTON
+		/* if this is custon buttons type, apply usable buttons */
+		for (i = 0; i < MAX_CUSTOM_BUTTONS; i++)
+			if (custom_button[0][i] != 0)
+			{
+				const input_field_config *custom_field = custom_button_info[0][i];
+	
+				if (input_seq_pressed(machine, input_field_seq(custom_field, SEQ_TYPE_STANDARD)))
+					now_btn |= custom_button[0][i];
+			}
+#endif /* USE_CUSTOM_BUTTON */
+
+		/* if buttons press, leave is_pressed = 1 */
+		if (now_btn != 0)
+			is_pressed |= 1;
+
+		/* if we're not pressed, reset old_btn = -1 */
+		if (!is_pressed)
+			old_btn = 1 << (normal_buttons + 2);
+
+		/* if this is the first press, show input log */
+		if (old_btn != now_btn)
+		{
+			if (now_btn != 0)
+			{
+				/* if this is Neo-Geo games, than alphabetic button type */
+				/*                           else numerical  button type */
+				char colorbutton = is_neogeo ? 'A' : 'a';
+				int n = 1;
+				int i;
+
+				for (i = 0; i < normal_buttons; i++, n <<= 1)
+				{
+					if ((now_btn & n) != 0 && (old_btn & n) == 0)
+						copy_command_buffer(machine, colorbutton + i);
+				}
+
+				/* if this is start button */
+				if (now_btn & 1 << normal_buttons)
+					copy_command_buffer(machine, 'S');
+
+				/* if this is select button (MESS only) */
+				if (now_btn & 1 << (normal_buttons + 1))
+					copy_command_buffer(machine, 's');
+
+				old_btn = now_btn;
+				now_btn = 0;
+			}
+		}
+	}
+	/* End of loop over all the buttons */
+}
+#endif /* USE_SHOW_INPUT_LOG */
+
+
+
+#ifdef INP_CAPTION
+void draw_caption(running_machine *machine, render_container *container)
+{
+	input_port_private *portdata = machine->input_port_data;
+	static char next_caption[512], caption_text[512];
+	static int next_caption_timer;
+
+	if (portdata->caption_file && next_caption_frame < 0)
+	{
+		char	read_buf[512];
+skip_comment:
+		if (mame_fgets(read_buf, 511, portdata->caption_file) == NULL)
+		{
+			mame_fclose(portdata->caption_file);
+			portdata->caption_file = NULL;
+		}
+		else
+		{
+			char	buf[16] = "";
+			int		i, j;
+
+			for (i = 0, j = 0; i < 16; i++)
+			{
+				if (read_buf[i] == '\t' || read_buf[i] == ' ')
+					continue;
+				if ((read_buf[i] == '#' || read_buf[i] == '\r' || read_buf[i] == '\n') && j == 0)
+					goto skip_comment;
+				if (read_buf[i] < '0' || read_buf[i] > '9')
+				{
+					buf[j++] ='\0';
+					break;
+				}
+				buf[j++] = read_buf[i];
+			}
+
+			next_caption_frame = strtol(buf, NULL, 10);
+			next_caption_timer = 0;
+			if (next_caption_frame == 0)
+			{
+				next_caption_frame = (int)machine->primary_screen->frame_number();
+				strcpy(next_caption, _("Error: illegal caption file"));
+				mame_fclose(portdata->caption_file);
+				portdata->caption_file = NULL;
+			}
+
+			for (;;i++)
+			{
+				if (read_buf[i] == '(')
+				{
+					for (i++, j = 0;;i++)
+					{
+						if (read_buf[i] == '\t' || read_buf[i] == ' ')
+							continue;
+						if (read_buf[i] < '0' || read_buf[i] > '9')
+						{
+							buf[j++] ='\0';
+							break;
+						}
+						buf[j++] = read_buf[i];
+					}
+
+					next_caption_timer = strtol(buf, NULL, 10);
+
+					for (;;i++)
+					{
+						if (read_buf[i] == '\t' || read_buf[i] == ' ')
+							continue;
+						if (read_buf[i] == ':')
+							break;
+					}
+				}
+				if (read_buf[i] != '\t' && read_buf[i] != ' ' && read_buf[i] != ':')
+					break;
+			}
+			if (next_caption_timer == 0)
+			{
+				next_caption_timer = 5 * ATTOSECONDS_TO_HZ(machine->primary_screen->frame_period().attoseconds);	// 5sec.
+			}
+
+			strcpy(next_caption, &read_buf[i]);
+
+			for (i = 0; next_caption[i] != '\0'; i++)
+			{
+				if (next_caption[i] == '\r' || next_caption[i] == '\n')
+				{
+					next_caption[i] = '\0';
+					break;
+				}
+			}
+		}
+	}
+	if (next_caption_timer && next_caption_frame <= (int)machine->primary_screen->frame_number())
+	{
+		caption_timer = next_caption_timer;
+		strcpy(caption_text, next_caption);
+		next_caption_frame = -1;
+		next_caption_timer = 0;
+	}
+
+	if (caption_timer)
+	{
+		ui_draw_text_box(container, caption_text, JUSTIFY_LEFT, 0.5, 1.0, UI_BACKGROUND_COLOR);
+		caption_timer--;
+	}
+}
+#endif /* INP_CAPTION */

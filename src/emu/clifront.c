@@ -60,6 +60,7 @@ static int info_listsoftware(core_options *options, const char *gamename);
 static void romident(core_options *options, const char *filename, romident_status *status);
 static void identify_file(core_options *options, const char *name, romident_status *status);
 static void identify_data(core_options *options, const char *name, const UINT8 *data, int length, romident_status *status);
+static void namecopy(char *name_ref, const char *desc);
 static void match_roms(core_options *options, const char *hash, int length, int *found);
 
 
@@ -97,6 +98,7 @@ static const options_entry cli_options[] =
 	{ "listdevices;ld",           "0",        OPTION_COMMAND,    "list available devices" },
 	{ "listmedia;lm",             "0",        OPTION_COMMAND,    "list available media for the system" },
 	{ "listsoftware",             "0",        OPTION_COMMAND,    "list known software for the system" },
+	{ "listgames",                "0",        OPTION_COMMAND,    "year, manufacturer and full name" },
 
 	{ NULL }
 };
@@ -117,6 +119,8 @@ int cli_execute(int argc, char **argv, const options_entry *osd_options)
 	core_options *options = NULL;
 	const char *gamename_option;
 	const game_driver *driver;
+	output_callback_func prevcb;
+	void *prevparam;
 	int result = MAMERR_FATALERROR;
 	astring gamename;
 	astring exename;
@@ -127,18 +131,45 @@ int cli_execute(int argc, char **argv, const options_entry *osd_options)
 		options = mame_options_init(osd_options);
 		options_add_entries(options, cli_options);
 
-		/* parse the command line first; if we fail here, we're screwed */
-		if (options_parse_command_line(options, argc, argv, OPTION_PRIORITY_CMDLINE))
-		{
-			result = MAMERR_INVALID_CONFIG;
-			goto error;
-		}
+		setup_language(options);
+
+		//mamep: ignore error for options added by callback later
+		mame_set_output_channel(OUTPUT_CHANNEL_ERROR, mame_null_output_callback, NULL, &prevcb, &prevparam);
+
+		//mamep: ignore error
+		/* parse the command line first */
+		options_parse_command_line(options, argc, argv, OPTION_PRIORITY_CMDLINE);
+
+		setup_language(options);
 
 		/* parse the simple commmands before we go any further */
 		core_filename_extract_base(&exename, argv[0], TRUE);
 		result = execute_simple_commands(options, exename);
 		if (result != -1)
 			goto error;
+
+		//mamep: required for using -listxml with -driver_config
+		options_set_string(options, OPTION_INIPATH, ".", OPTION_PRIORITY_INI);
+		parse_ini_file(options, CONFIGNAME, OPTION_PRIORITY_MAME_INI);
+
+#ifdef DRIVER_SWITCH
+		assign_drivers(options);
+#endif /* DRIVER_SWITCH */
+
+		//mamep: enable error; now we have all options we can use
+		mame_set_output_channel(OUTPUT_CHANNEL_ERROR, prevcb, prevparam, NULL, NULL);
+
+		//mamep: try command line again
+		/* parse the command line again; if we fail here, we're screwed */
+		if (options_parse_command_line(options, argc, argv, OPTION_PRIORITY_CMDLINE))
+		{
+			result = MAMERR_INVALID_CONFIG;
+			goto error;
+		}
+
+		//mamep: required for using -listxml with -driver_config
+		options_set_string(options, OPTION_INIPATH, ".", OPTION_PRIORITY_INI);
+		parse_ini_file(options, CONFIGNAME, OPTION_PRIORITY_MAME_INI);
 
 		/* find out what game we might be referring to */
 		gamename_option = options_get_string(options, OPTION_GAMENAME);
@@ -160,11 +191,11 @@ int cli_execute(int argc, char **argv, const options_entry *osd_options)
 			driver_list_get_approx_matches(drivers, gamename_option, ARRAY_LENGTH(matches), matches);
 
 			/* print them out */
-			fprintf(stderr, "\n\"%s\" approximately matches the following\n"
-					"supported " GAMESNOUN " (best match first):\n\n", gamename_option);
+			mame_printf_warning(_("\n\"%s\" approximately matches the following\n"
+					"supported " GAMESNOUN " (best match first):\n\n"), gamename_option);
 			for (drvnum = 0; drvnum < ARRAY_LENGTH(matches); drvnum++)
 				if (matches[drvnum] != NULL)
-					fprintf(stderr, "%-18s%s\n", matches[drvnum]->name, matches[drvnum]->description);
+					mame_printf_warning("%-18s%s\n", matches[drvnum]->name, _LST(matches[drvnum]->description));
 
 			/* exit with an error */
 			result = MAMERR_NO_SUCH_GAME;
@@ -194,6 +225,10 @@ int cli_execute(int argc, char **argv, const options_entry *osd_options)
 	}
 
 error:
+#ifdef DRIVER_SWITCH
+	global_free(drivers);
+#endif /* DRIVER_SWITCH */ 
+
 	/* free our options and exit */
 	if (options != NULL)
 		options_free(options);
@@ -232,7 +267,8 @@ static int execute_simple_commands(core_options *options, const char *exename)
 	/* showusage? */
 	if (options_get_bool(options, CLIOPTION_SHOWUSAGE))
 	{
-		mame_printf_info("Usage: %s [%s] [options]\n\nOptions:\n", exename, GAMENOUN);
+		setup_language(options);
+		mame_printf_info(_("Usage: %s [%s] [options]\n\nOptions:\n"), exename, _(GAMENOUN));
 		options_output_help(options, help_output);
 		return MAMERR_NONE;
 	}
@@ -240,6 +276,10 @@ static int execute_simple_commands(core_options *options, const char *exename)
 	/* validate? */
 	if (options_get_bool(options, CLIOPTION_VALIDATE))
 	{
+#ifdef DRIVER_SWITCH
+		options_set_string(options, OPTION_DRIVER_CONFIG, "all", OPTION_PRIORITY_INI);
+		assign_drivers(options);
+#endif /* DRIVER_SWITCH */
 		return mame_validitychecks(NULL);
 	}
 
@@ -274,6 +314,7 @@ static int execute_commands(core_options *options, const char *exename, const ga
 		{ CLIOPTION_LISTMEDIA,		info_listmedia },
 		{ CLIOPTION_LISTSOFTWARE,	info_listsoftware },
 		{ CLIOPTION_ROMIDENT,		info_romident }
+		,{ CLIOPTION_LISTGAMES,		cli_info_listgames }
 	};
 	int i;
 
@@ -292,7 +333,7 @@ static int execute_commands(core_options *options, const char *exename, const ga
 		/* error if unable to create the file */
 		if (filerr != FILERR_NONE)
 		{
-			fprintf(stderr, "Unable to create file " CONFIGNAME ".ini\n");
+			mame_printf_warning(_("Unable to create file " CONFIGNAME ".ini\n"));
 			return MAMERR_FATALERROR;
 		}
 
@@ -334,17 +375,163 @@ static int execute_commands(core_options *options, const char *exename, const ga
 static void display_help(void)
 {
 #ifndef MESS
-	mame_printf_info("M.A.M.E. v%s - Multiple Arcade Machine Emulator\n"
-		   "Copyright Nicola Salmoria and the MAME Team\n\n", build_version);
-	mame_printf_info("%s\n", mame_disclaimer);
-	mame_printf_info("Usage:  MAME gamename [options]\n\n"
+	mame_printf_info(_("M.A.M.E. v%s - Multiple Arcade Machine Emulator\n"
+		   "Copyright Nicola Salmoria and the MAME Team\n\n"), build_version);
+	mame_printf_info("%s\n", _(mame_disclaimer));
+	mame_printf_info(_("Usage:  MAME gamename [options]\n\n"
 		   "        MAME -showusage    for a brief list of options\n"
 		   "        MAME -showconfig   for a list of configuration options\n"
 		   "        MAME -createconfig to create a " CONFIGNAME ".ini\n\n"
-		   "For usage instructions, please consult the file windows.txt\n");
+		   "For usage instructions, please consult the file windows.txt\n"));
 #else
 	mess_display_help();
 #endif
+}
+
+
+
+#ifdef DRIVER_SWITCH
+void assign_drivers(core_options *options)
+{
+	static const struct
+	{
+		const char *name;
+		const game_driver * const *driver;
+	} drivers_table[] =
+	{
+		{ "mame",	mamedrivers },
+#ifndef TINY_BUILD
+		{ "plus",	plusdrivers },
+		{ "homebrew",	homebrewdrivers },
+		{ "decrypted",	decrypteddrivers },
+#ifdef MAMEMESS
+		{ "console",	consoledrivers },
+#endif /* MAMEMESS */
+#endif /* !TINY_BUILD */
+		{ NULL }
+	};
+
+	UINT32 enabled = 0;
+	int i, n;
+
+#ifndef TINY_BUILD
+	const char *drv_option = options_get_string(options, OPTION_DRIVER_CONFIG);
+	if (drv_option)
+	{
+		char *temp = mame_strdup(drv_option);
+		if (temp)
+		{
+			char *p = strtok(temp, ",");
+ 			while (p)
+			{
+				char *s = core_strtrim(p);	//get individual driver name
+				if (s[0])
+				{
+					if (mame_stricmp(s, "all") == 0)
+					{
+						enabled = (UINT32)-1;
+						break;
+					}
+
+					for (i = 0; drivers_table[i].name; i++)
+						if (mame_stricmp(s, drivers_table[i].name) == 0)
+						{
+							enabled |= 1 << i;
+							break;
+						}
+
+					if (!drivers_table[i].name)
+						mame_printf_warning(_("Illegal value for %s = %s\n"), OPTION_DRIVER_CONFIG, s);
+				}
+				global_free(s);
+ 				p = strtok(NULL, ",");
+			}
+ 			global_free(temp);
+		}
+	}
+#endif /* !TINY_BUILD */
+
+	if (enabled == 0)
+		enabled = 1;	// default to mamedrivers
+
+	n = 0;
+	for (i = 0; drivers_table[i].name; i++)
+		if (enabled & (1 << i))
+		{
+			int c;
+
+			for (c = 0; drivers_table[i].driver[c]; c++)
+				n++;
+		}
+
+	if (drivers)
+		global_free(drivers);
+	drivers = global_alloc_array(const game_driver *, (n + 1) * sizeof (game_driver*));
+
+	n = 0;
+	for (i = 0; drivers_table[i].name; i++)
+		if (enabled & (1 << i))
+		{
+			int c;
+
+			for (c = 0; drivers_table[i].driver[c]; c++)
+				drivers[n++] = drivers_table[i].driver[c];
+		}
+
+	drivers[n] = NULL;
+
+#ifdef OPTION_ADDED_DEVICE_OPTIONS
+	options_set_bool(options, OPTION_ADDED_DEVICE_OPTIONS, FALSE, OPTION_PRIORITY_DEFAULT);
+
+	//add options by callback if we need
+	if (!options_get_bool(options, OPTION_ADDED_DEVICE_OPTIONS))
+	{
+		const char *gamename = options_get_string(options, OPTION_GAMENAME);
+		if (gamename)
+		{
+			const char *argv[2];
+
+			argv[0] = gamename;
+			argv[1] = NULL;
+
+			options_parse_command_line(options, ARRAY_LENGTH(argv) - 1, (char **)argv, OPTION_PRIORITY_CMDLINE);
+		}
+	}
+#endif /* OPTION_ADDED_DEVICE_OPTIONS */
+}
+#endif /* DRIVER_SWITCH */
+
+
+
+//============================================================
+//  setup_language
+//============================================================
+
+void setup_language(core_options *options)
+{
+	const char *langname = options_get_string(options, OPTION_LANGUAGE);
+	int use_lang_list =options_get_bool(options, OPTION_USE_LANG_LIST);
+
+	int langcode = mame_stricmp(langname, "auto") ?
+		lang_find_langname(langname) :
+		lang_find_codepage(osd_get_default_codepage());
+
+	if (langcode < 0)
+	{
+		langcode = UI_LANG_EN_US;
+		lang_set_langcode(options, langcode);
+		set_osdcore_acp(ui_lang_info[langcode].codepage);
+
+		if (mame_stricmp(langname, "auto"))
+			mame_printf_warning("error: invalid value for language: %s\nUse %s\n",
+		                langname, ui_lang_info[langcode].description);
+	}
+
+	lang_set_langcode(options, langcode);
+	set_osdcore_acp(ui_lang_info[langcode].codepage);
+
+	lang_message_enable(UI_MSG_LIST, use_lang_list);
+	lang_message_enable(UI_MSG_MANUFACTURE, use_lang_list);
 }
 
 
@@ -378,13 +565,38 @@ int cli_info_listfull(core_options *options, const char *gamename)
 	for (drvindex = 0; drivers[drvindex] != NULL; drvindex++)
 		if ((drivers[drvindex]->flags & GAME_NO_STANDALONE) == 0 && mame_strwildcmp(gamename, drivers[drvindex]->name) == 0)
 		{
+			char name[200];
+
 			/* print the header on the first one */
 			if (count == 0)
-				mame_printf_info("Name:             Description:\n");
+				mame_printf_info(_("Name:             Description:\n"));
+			count++;
 
 			/* output the remaining information */
-			mame_printf_info("%-18s\"%s\"\n", drivers[drvindex]->name, drivers[drvindex]->description);
-			count++;
+			mame_printf_info("%-18s", drivers[drvindex]->name);
+
+			if (lang_message_is_enabled(UI_MSG_LIST))
+			{
+				strcpy(name, _LST(drivers[drvindex]->description));
+
+				mame_printf_info("\"%s\"\n", name);
+
+				continue;
+			}
+
+			namecopy(name,drivers[drvindex]->description);
+
+			mame_printf_info("\"%s",name);
+
+			/* print the additional description only if we are listing clones */
+			{
+				const char *pdest = strstr(drivers[drvindex]->description, " (");
+
+				if (pdest != NULL && pdest > drivers[drvindex]->description)
+					mame_printf_info("%s", pdest);
+			}
+
+			mame_printf_info("\"\n");
 		}
 
 	/* return an error if none found */
@@ -436,7 +648,7 @@ int cli_info_listclones(core_options *options, const char *gamename)
 			{
 				/* print the header on the first one */
 				if (count == 0)
-					mame_printf_info("Name:            Clone of:\n");
+					mame_printf_info(_("Name:            Clone of:\n"));
 
 				/* output the remaining information */
 				mame_printf_info("%-16s %-8s\n", drivers[drvindex]->name, clone_of->name);
@@ -469,7 +681,7 @@ int cli_info_listbrothers(core_options *options, const char *gamename)
 			didit[drvindex] = TRUE;
 			if (count > 0)
 				mame_printf_info("\n");
-			mame_printf_info("%s ... other drivers in %s:\n", drivers[drvindex]->name, core_filename_extract_base(&filename, drivers[drvindex]->source_file, FALSE)->cstr());
+			mame_printf_info(_("%s ... other drivers in %s:\n"), drivers[drvindex]->name, core_filename_extract_base(&filename, drivers[drvindex]->source_file, FALSE)->cstr());
 
 			/* now iterate again over drivers, finding those with the same source file */
 			for (matchindex = 0; drivers[matchindex]; matchindex++)
@@ -520,7 +732,7 @@ int cli_info_listcrc(core_options *options, const char *gamename)
 
 						/* if we have a CRC, display it */
 						if (hash_data_extract_printable_checksum(ROM_GETHASHDATA(rom), HASH_CRC, hashbuf))
-							mame_printf_info("%s %-12s %s\n", hashbuf, ROM_GETNAME(rom), drivers[drvindex]->description);
+							mame_printf_info("%s %-12s %s\n", hashbuf, ROM_GETNAME(rom), _LST(drivers[drvindex]->description));
 					}
 
 			count++;
@@ -552,8 +764,8 @@ int cli_info_listroms(core_options *options, const char *gamename)
 			/* print the header */
 			if (count > 0)
 				mame_printf_info("\n");
-			mame_printf_info("This is the list of the ROMs required for driver \"%s\".\n"
-					"Name            Size Checksum\n", drivers[drvindex]->name);
+			mame_printf_info(_("This is the list of the ROMs required for driver \"%s\".\n"
+					"Name            Size Checksum\n"), drivers[drvindex]->name);
 
 			/* iterate over sources, regions and then ROMs within the region */
 			for (source = rom_first_source(drivers[drvindex], config); source != NULL; source = rom_next_source(drivers[drvindex], config, source))
@@ -582,13 +794,13 @@ int cli_info_listroms(core_options *options, const char *gamename)
 						if (!hash_data_has_info(hash, HASH_INFO_NO_DUMP))
 						{
 							if (hash_data_has_info(hash, HASH_INFO_BAD_DUMP))
-								mame_printf_info(" BAD");
+								mame_printf_info(_(" BAD"));
 
 							hash_data_print(hash, 0, hashbuf);
 							mame_printf_info(" %s", hashbuf);
 						}
 						else
-							mame_printf_info(" NO GOOD DUMP KNOWN");
+							mame_printf_info(_(" NO GOOD DUMP KNOWN"));
 
 						/* end with a CR */
 						mame_printf_info("\n");
@@ -660,7 +872,7 @@ int cli_info_listdevices(core_options *options, const char *gamename)
 
 			if (count != 0)
 				printf("\n");
-			printf("Driver %s (%s):\n", drivers[drvindex]->name, drivers[drvindex]->description);
+			printf(_("Driver %s (%s):\n"), drivers[drvindex]->name, _LST(drivers[drvindex]->description));
 
 			/* iterate through devices */
 			for (devconfig = config->m_devicelist.first(); devconfig != NULL; devconfig = devconfig->next())
@@ -724,7 +936,7 @@ static int info_verifyroms(core_options *options, const char *gamename)
 				const game_driver *clone_of;
 
 				/* output the name of the driver and its clone */
-				mame_printf_info("romset %s ", drivers[drvindex]->name);
+				mame_printf_info(_("romset %s "), drivers[drvindex]->name);
 				clone_of = driver_get_clone(drivers[drvindex]);
 				if (clone_of != NULL)
 					mame_printf_info("[%s] ", clone_of->name);
@@ -733,17 +945,17 @@ static int info_verifyroms(core_options *options, const char *gamename)
 				switch (res)
 				{
 					case INCORRECT:
-						mame_printf_info("is bad\n");
+						mame_printf_info(_("is bad\n"));
 						incorrect++;
 						break;
 
 					case CORRECT:
-						mame_printf_info("is good\n");
+						mame_printf_info(_("is good\n"));
 						correct++;
 						break;
 
 					case BEST_AVAILABLE:
-						mame_printf_info("is best available\n");
+						mame_printf_info(_("is best available\n"));
 						correct++;
 						break;
 				}
@@ -757,16 +969,16 @@ static int info_verifyroms(core_options *options, const char *gamename)
 	if (correct + incorrect == 0)
 	{
 		if (notfound > 0)
-			mame_printf_info("romset \"%s\" not found!\n", gamename);
+			mame_printf_info(_("romset \"%s\" not found!\n"), gamename);
 		else
-			mame_printf_info("romset \"%s\" not supported!\n", gamename);
+			mame_printf_info(_("romset \"%s\" not supported!\n"), gamename);
 		return MAMERR_NO_SUCH_GAME;
 	}
 
 	/* otherwise, print a summary */
 	else
 	{
-		mame_printf_info("%d romsets found, %d were OK.\n", correct + incorrect, correct);
+		mame_printf_info(_("%d romsets found, %d were OK.\n"), correct + incorrect, correct);
 		return (incorrect > 0) ? MAMERR_MISSING_FILES : MAMERR_NONE;
 	}
 }
@@ -904,8 +1116,8 @@ static int info_listsoftware(core_options *options, const char *gamename)
 										fprintf( out, "\t\t\t<part name=\"%s\"", part->name );
 										if ( part->interface_ )
 											fprintf( out, " interface=\"%s\"", part->interface_ );
-//                                          if ( part->feature )
-//                                              fprintf( out, " features=\"%s\"", part->feature );
+//											if ( part->feature )
+//												fprintf( out, " features=\"%s\"", part->feature );
 										fprintf( out, ">\n");
 
 										/* TODO: display rom region information */
@@ -977,8 +1189,8 @@ static int info_listsoftware(core_options *options, const char *gamename)
 
 
 /*-------------------------------------------------
-    softlist_match_roms - scan for a matching
-    software ROM by hash
+    softlist_match_roms - scan for a matching 
+	software ROM by hash
 -------------------------------------------------*/
 static void softlist_match_roms(core_options *options, const char *hash, int length, int *found)
 {
@@ -1129,30 +1341,30 @@ static int info_verifysamples(core_options *options, const char *gamename)
 			/* if not found, print a message and set the flag */
 			if (res == NOTFOUND)
 			{
-				mame_printf_error("sampleset \"%s\" not found!\n", drivers[drvindex]->name);
+				mame_printf_error(_("sampleset \"%s\" not found!\n"), drivers[drvindex]->name);
 				notfound = TRUE;
 			}
 
 			/* else display information about what we discovered */
 			else
 			{
-				mame_printf_info("sampleset %s ", drivers[drvindex]->name);
+				mame_printf_info(_("sampleset %s "), drivers[drvindex]->name);
 
 				/* switch off of the result */
 				switch (res)
 				{
 					case INCORRECT:
-						mame_printf_info("is bad\n");
+						mame_printf_info(_("is bad\n"));
 						incorrect++;
 						break;
 
 					case CORRECT:
-						mame_printf_info("is good\n");
+						mame_printf_info(_("is good\n"));
 						correct++;
 						break;
 
 					case BEST_AVAILABLE:
-						mame_printf_info("is best available\n");
+						mame_printf_info(_("is best available\n"));
 						correct++;
 						break;
 				}
@@ -1166,14 +1378,14 @@ static int info_verifysamples(core_options *options, const char *gamename)
 	if (correct + incorrect == 0)
 	{
 		if (!notfound)
-			mame_printf_error("sampleset \"%s\" not supported!\n", gamename);
+			mame_printf_error(_("sampleset \"%s\" not supported!\n"), gamename);
 		return MAMERR_NO_SUCH_GAME;
 	}
 
 	/* otherwise, print a summary */
 	else
 	{
-		mame_printf_info("%d samplesets found, %d were OK.\n", correct + incorrect, correct);
+		mame_printf_info(_("%d samplesets found, %d were OK.\n"), correct + incorrect, correct);
 		return (incorrect > 0) ? MAMERR_MISSING_FILES : MAMERR_NONE;
 	}
 }
@@ -1207,6 +1419,54 @@ static int info_romident(core_options *options, const char *gamename)
 		return MAMERR_IDENT_PARTIAL;
 	else
 		return MAMERR_IDENT_NONE;
+}
+
+
+/*-------------------------------------------------
+    cli_info_listgames - output the manufacturer
+    for make tp_manufact.txt
+-------------------------------------------------*/
+
+int cli_info_listgames(core_options *options, const char *gamename)
+{
+	int drvindex, count = 0;
+
+	/* a NULL gamename == '*' */
+	if (gamename == NULL)
+		gamename = "*";
+
+	for (drvindex = 0; drivers[drvindex]; drvindex++)
+		if ((drivers[drvindex]->flags & GAME_NO_STANDALONE) == 0 && mame_strwildcmp(gamename, drivers[drvindex]->name) == 0)
+		{
+			char name[200];
+
+			mame_printf_info("%-5s%-36s ",drivers[drvindex]->year, _MANUFACT(drivers[drvindex]->manufacturer));
+
+			if (lang_message_is_enabled(UI_MSG_LIST))
+			{
+				strcpy(name, _LST(drivers[drvindex]->description));
+				mame_printf_info("\"%s\"\n", name);
+				continue;
+			}
+
+			namecopy(name,drivers[drvindex]->description);
+			mame_printf_info("\"%s",name);
+
+			/* print the additional description only if we are listing clones */
+			{
+				const char *pdest = strstr(drivers[drvindex]->description, " (");
+
+				if (pdest != NULL && pdest > drivers[drvindex]->description)
+					mame_printf_info("%s", pdest);
+			}
+
+			mame_printf_info("\"\n");
+
+			count++;
+		}
+
+	/* return an error if none found */
+	return (count > 0) ? MAMERR_NONE : MAMERR_NO_SUCH_GAME;
 }
 
 
@@ -1416,13 +1676,13 @@ static void identify_data(core_options *options, const char *name, const UINT8 *
 		/* if not a power of 2, assume it is a non-ROM file */
 		if ((length & (length - 1)) != 0)
 		{
-			mame_printf_info("NOT A ROM\n");
+			mame_printf_info(_("NOT A ROM\n"));
 			status->nonroms++;
 		}
 
 		/* otherwise, it's just not a match */
 		else
-			mame_printf_info("NO MATCH\n");
+			mame_printf_info(_("NO MATCH\n"));
 	}
 
 	/* if we did find it, count it as a match */
@@ -1432,6 +1692,31 @@ static void identify_data(core_options *options, const char *name, const UINT8 *
 	/* free any temporary JED data */
 	if (tempjed != NULL)
 		global_free(tempjed);
+}
+
+
+static void namecopy(char *name_ref, const char *desc)
+{
+	char name[200];
+
+	if (lang_message_is_enabled(UI_MSG_LIST))
+	{
+		strcpy(name, _LST(desc));
+		if (strstr(name," (")) *strstr(name," (") = 0;
+		sprintf(name_ref,"%s",name);
+		return;
+	}
+
+	strcpy(name,desc);
+
+	/* remove details in parenthesis */
+	if (strstr(name," (")) *strstr(name," (") = 0;
+
+	/* Move leading "The" to the end */
+	if (strncmp(name,"The ",4) == 0)
+		sprintf(name_ref,"%s, The",name+4);
+	else
+		sprintf(name_ref,"%s",name);
 }
 
 
@@ -1461,7 +1746,7 @@ static void match_roms(core_options *options, const char *hash, int length, int 
 						/* output information about the match */
 						if (*found != 0)
 							mame_printf_info("                    ");
-						mame_printf_info("= %s%-20s  %-10s %s\n", baddump ? "(BAD) " : "", ROM_GETNAME(rom), drivers[drvindex]->name, drivers[drvindex]->description);
+						mame_printf_info("= %s%-20s  %-10s %s\n", baddump ? _("(BAD) ") : "", ROM_GETNAME(rom), drivers[drvindex]->name, _LST(drivers[drvindex]->description));
 						(*found)++;
 					}
 

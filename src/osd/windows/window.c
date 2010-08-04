@@ -68,6 +68,14 @@
 #include "strconv.h"
 #include "config.h"
 #include "winutf8.h"
+#include "mameres.h" // For IDI_MAME_ICON
+#ifdef USE_SCALE_EFFECTS
+#include "osdscale.h"
+#endif /* USE_SCALE_EFFECTS */
+
+#ifdef MAMEMESS
+#define MESS
+#endif /* MAMEMESS */
 
 #ifdef MESS
 #include "menu.h"
@@ -122,6 +130,9 @@ static DWORD main_threadid;
 static int win_physical_width;
 static int win_physical_height;
 
+#ifdef USE_SCALE_EFFECTS
+int win_scale_res_changed;
+#endif /* USE_SCALE_EFFECTS */
 
 
 //============================================================
@@ -242,7 +253,7 @@ void winwindow_init(running_machine *machine)
 	// create an event to signal UI pausing
 	ui_pause_event = CreateEvent(NULL, TRUE, FALSE, NULL);
 	if (!ui_pause_event)
-		fatalerror("Failed to create pause event");
+		fatalerror(_WINDOWS("Failed to create pause event"));
 
 	// if multithreading, create a thread to run the windows
 	if (multithreading_enabled)
@@ -250,13 +261,13 @@ void winwindow_init(running_machine *machine)
 		// create an event to signal when the window thread is ready
 		window_thread_ready_event = CreateEvent(NULL, TRUE, FALSE, NULL);
 		if (!window_thread_ready_event)
-			fatalerror("Failed to create window thread ready event");
+			fatalerror(_WINDOWS("Failed to create window thread ready event"));
 
 		// create a thread to run the windows from
 		temp = _beginthreadex(NULL, 0, thread_entry, NULL, 0, (unsigned *)&window_threadid);
 		window_thread = (HANDLE)temp;
 		if (window_thread == NULL)
-			fatalerror("Failed to create window thread");
+			fatalerror(_WINDOWS("Failed to create window thread"));
 
 		// set the thread priority equal to the main MAME thread
 		SetThreadPriority(window_thread, GetThreadPriority(GetCurrentThread()));
@@ -638,7 +649,7 @@ void winwindow_video_window_create(running_machine *machine, int index, win_moni
 	// load the layout
 	window->target = render_target_alloc(machine, NULL, 0);
 	if (window->target == NULL)
-		fatalerror("Error creating render target for window %d", index);
+		fatalerror(_WINDOWS("Error creating render target for window %d"), index);
 
 	// set the specific view
 	sprintf(option, "view%d", index);
@@ -651,9 +662,9 @@ void winwindow_video_window_create(running_machine *machine, int index, win_moni
 
 	// make the window title
 	if (video_config.numscreens == 1)
-		sprintf(window->title, APPNAME ": %s [%s]", machine->gamedrv->description, machine->gamedrv->name);
+		sprintf(window->title, APPNAME ": %s [%s]", _LST(machine->gamedrv->description), machine->gamedrv->name);
 	else
-		sprintf(window->title, APPNAME ": %s [%s] - Screen %d", machine->gamedrv->description, machine->gamedrv->name, index);
+		sprintf(window->title, _WINDOWS(APPNAME ": %s [%s] - Screen %d"), _LST(machine->gamedrv->description), machine->gamedrv->name, index);
 
 	// set the initial maximized state
 	window->startmaximized = options_get_bool(machine->options(), WINOPTION_MAXIMIZE);
@@ -673,7 +684,7 @@ void winwindow_video_window_create(running_machine *machine, int index, win_moni
 
 	// handle error conditions
 	if (window->init_state == -1)
-		fatalerror("Unable to complete window creation");
+		fatalerror(_WINDOWS("Unable to complete window creation"));
 }
 
 
@@ -746,6 +757,13 @@ void winwindow_video_window_update(win_window_info *window)
 				SendMessage(window->hwnd, WM_USER_SET_MAXSIZE, 0, 0);
 		}
 	}
+#ifdef USE_SCALE_EFFECTS
+	if (win_scale_res_changed)
+	{
+		if (!window->fullscreen && !window->ismaximized)
+			SendMessage(window->hwnd, WM_USER_SET_MINSIZE, 0, 0);
+	}
+#endif /* USE_SCALE_EFFECTS */
 
 	// if we're visible and running and not in the middle of a resize, draw
 	if (window->hwnd != NULL && window->target != NULL && window->drawdata != NULL)
@@ -842,11 +860,12 @@ static void create_window_class(void)
 		wc.lpfnWndProc		= winwindow_video_window_proc;
 #endif
 		wc.hCursor			= LoadCursor(NULL, IDC_ARROW);
-		wc.hIcon			= LoadIcon(NULL, IDI_APPLICATION);
+		// mamep: show mame icon in-game window title
+		wc.hIcon			= LoadIcon(wc.hInstance, MAKEINTRESOURCE(IDI_MAME_ICON));
 
 		// register the class; fail if we can't
 		if (!RegisterClass(&wc))
-			fatalerror("Failed to create window class");
+			fatalerror(_WINDOWS("Failed to create window class"));
 		classes_created = TRUE;
 	}
 }
@@ -1132,8 +1151,9 @@ static int complete_create(win_window_info *window)
 
 	// create the window menu if needed
 #if HAS_WINDOW_MENU
-	if (win_create_menu(window->machine, &menu))
-		return 1;
+	// mamep: menu failure shouldn't block window creation
+	win_create_menu(window->machine, &menu);
+	//	return 1;
 #endif
 
 	// create the window, but don't show it yet
@@ -1577,6 +1597,14 @@ static void get_min_bounds(win_window_info *window, RECT *bounds, int constrain)
 
 	// get the minimum target size
 	render_target_get_minimum_size(window->target, &minwidth, &minheight);
+
+#ifdef USE_SCALE_EFFECTS
+	if (win_scale_res_changed)
+	{
+		minwidth *= scale_effect.xsize;
+		minheight *= scale_effect.ysize;
+	}
+#endif /* USE_SCALE_EFFECTS */
 
 	// expand to our minimum dimensions
 	if (minwidth < MIN_WINDOW_DIM)

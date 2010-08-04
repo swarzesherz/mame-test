@@ -17,9 +17,13 @@
 #include "config.h"
 
 #include <ctype.h>
+	
+#ifdef MAMEMESS
+#define MESS
+#endif /* MAMEMESS */
 
 /* MESS/MAME configuration */
-#ifdef MESS
+#if 0 //def MESS
 #define XML_ROOT "mess"
 #define XML_TOP "machine"
 #else

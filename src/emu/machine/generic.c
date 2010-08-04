@@ -388,7 +388,8 @@ void nvram_save(running_machine *machine)
 	if (nvram_file != NULL)
 	{
 		// write data via general NVRAM handler first
-		if (machine->config->m_nvram_handler != NULL)
+		// mamep: dont save nvram during playback
+		if (machine->config->m_nvram_handler != NULL && !has_playback_file(machine))
 			(*machine->config->m_nvram_handler)(machine, nvram_file, TRUE);
 
 		// find all devices with NVRAM handlers, and tell them to write next

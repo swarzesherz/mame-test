@@ -251,6 +251,26 @@ static file_error fopen_internal(core_options *opts, path_iterator *iterator, co
 			filerr = fopen_attempt_zipped((*file)->filename, crc, openflags, *file);
 			if (filerr == FILERR_NONE)
 				break;
+
+#if 1	// mamep: load zipped inp file
+			{
+			    astring zipped_fullname;
+			    int offset = 0;
+			    int n = (*file)->filename.rchr(offset, '.');
+    
+			    if (n > 0)
+				    offset = n;
+    
+			    zipped_fullname.cpy((*file)->filename, offset);
+			    zipped_fullname.cat(PATH_SEPARATOR);
+			    zipped_fullname.cat(filename);
+    
+			    filerr = fopen_attempt_zipped((*file)->filename, crc, openflags, *file);
+
+			if (filerr == FILERR_NONE)
+				break;
+			}
+#endif
 		}
 	}
 
@@ -617,7 +637,7 @@ int mame_fputs(mame_file *file, const char *s)
     mame_vfprintf - vfprintf to a text file
 -------------------------------------------------*/
 
-static int mame_vfprintf(mame_file *file, const char *fmt, va_list va)
+int CLIB_DECL mame_vfprintf(mame_file *file, const char *fmt, va_list va)
 {
 	/* write the data if we can */
 	return (file->file != NULL) ? core_vfprintf(file->file, fmt, va) : 0;

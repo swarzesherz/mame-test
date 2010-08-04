@@ -28,7 +28,12 @@
 /* step 2: define the drivers[] array */
 #undef DRIVER
 #define DRIVER(NAME) &GAME_NAME(NAME),
+#ifndef DRIVER_SWITCH
 const game_driver * const drivers[] =
+#else /* DRIVER_SWITCH */
+const game_driver ** drivers = NULL;
+const game_driver * const mamedrivers[] =
+#endif /* DRIVER_SWITCH */
 {
 #include "mamedriv.c"
 	0	/* end of array */
@@ -36,6 +41,7 @@ const game_driver * const drivers[] =
 
 #else	/* DRIVER_RECURSIVE */
 
+#ifndef NEOCPSPGM
 	/* "Pacman hardware" games */
 	DRIVER( puckman )	/* (c) 1980 Namco */
 	DRIVER( puckmana )	/* (c) 1980 Namco */
@@ -2645,6 +2651,7 @@ V-V                           TP-027
 	/*  6/1991 Quiz Sangokushi - see below among "Mitchell" games */
 	/* 10/1991 Block Block - see below among "Mitchell" games */
 	/*  6/1995 Street Fighter - the Movie - see below among "Incredible Technologies" games */
+#endif /* !NEOCPSPGM */
 
 
 	/* Capcom CPS1 games */
@@ -3081,6 +3088,7 @@ V-V                           TP-027
 	DRIVER( jojobane )	/* 13/09/1999 (c) 1999 Capcom */
 	DRIVER( redeartn )	/* 21/11/1996 (c) 1996 Capcom */
 
+#ifndef NEOCPSPGM
 	/* Capcom ZN1 */
 	DRIVER( cpzn1 )
 	DRIVER( ts2 )		/* Battle Arena Toshinden 2 (USA 951124) */
@@ -6442,6 +6450,7 @@ BOMULEUL CHAJARA SEGA ST-V  1997/04/11
 	/* Electrocoin on early SNK hardware - gambling game remove once it works */
 	DRIVER( dmndrby )	/* G4001 'DD' (c) 1986 */
 	DRIVER( dmndrbya )	/* G4001 'DD' (c) 1986 */
+#endif /* !NEOCPSPGM */
 
 	/* Neo Geo games */
 	/* the four digits number is the game ID stored at address 0x0108 of the program ROM */
@@ -6723,6 +6732,7 @@ BOMULEUL CHAJARA SEGA ST-V  1997/04/11
 	/* Neo Print */
 	DRIVER( 98best44 )
 
+#ifndef NEOCPSPGM
 	/* Hyper NeoGeo 64 uses a 3 digit rom code? */
 
 	DRIVER( hng64 )
@@ -8459,6 +8469,7 @@ Other Sun games
 	DRIVER( lhzb4 )		/* (c) 200? */
 	DRIVER( klxyj )		/* (c) 200? */
 	DRIVER( mgfx )		/* (c) 200? */
+#endif /* !NEOCPSPGM */
 
 	/* IGS PGM System Games */
 	DRIVER( pgm )
@@ -8516,6 +8527,7 @@ Other Sun games
 	DRIVER( happy6 )
 	DRIVER( svg )
 
+#ifndef NEOCPSPGM
 	/* Spirit Tech. Corp. */
 	DRIVER( dunhuang )	/* (c) 1995 */
 
@@ -10284,5 +10296,6 @@ Other Sun games
 	DRIVER( poker72 )
 
 	DRIVER( chkun )
+#endif /* !NEOCPSPGM */
 
 #endif	/* DRIVER_RECURSIVE */

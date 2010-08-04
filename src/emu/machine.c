@@ -104,6 +104,9 @@
 #include "emuopts.h"
 #include "osdepend.h"
 #include "config.h"
+#ifdef USE_HISCORE
+#include "hiscore.h"
+#endif /* USE_HISCORE */
 #include "debugger.h"
 #include "image.h"
 #include "profiler.h"
@@ -209,6 +212,11 @@ running_machine::running_machine(const game_driver &driver, const machine_config
 	for (device_t *device = m_devicelist.first(); device != NULL; device = device->next())
 		if (dynamic_cast<cpu_device *>(device) != NULL)
 		{
+#ifdef USE_HISCORE
+			cpu[0] = downcast<cpu_device *>(device);
+ 	 		for (int cpunum = 1; cpunum < ARRAY_LENGTH(cpu) && cpu[cpunum - 1] != NULL; cpunum++)
+	 			cpu[cpunum] = cpu[cpunum - 1]->typenext();
+#endif /* USE_HISCORE */
 			firstcpu = downcast<cpu_device *>(device);
 			break;
 		}
@@ -345,6 +353,11 @@ void running_machine::start()
 	if (m_config.m_video_start != NULL)
 		(*m_config.m_video_start)(this);
 
+#ifdef USE_HISCORE
+	// initialize the hiscore system
+	hiscore_init(this);
+#endif /* USE_HISCORE */
+
 	// if we're coming in with a savegame request, process it now
 	const char *savegame = options_get_string(&m_options, OPTION_STATE);
 	if (savegame[0] != 0)
@@ -426,6 +439,8 @@ int running_machine::run(bool firstrun)
 		// save the NVRAM and configuration
 		sound_mute(this, true);
 		nvram_save(this);
+		// mamep: dont save settings during playback
+		if (!has_playback_file(this))
 		config_save_settings(this);
 	}
 	catch (emu_fatalerror &fatal)
@@ -784,8 +799,8 @@ void running_machine::call_notifiers(machine_notification which)
 void running_machine::handle_saveload()
 {
 	UINT32 openflags = (m_saveload_schedule == SLS_LOAD) ? OPEN_FLAG_READ : (OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS);
-	const char *opnamed = (m_saveload_schedule == SLS_LOAD) ? "loaded" : "saved";
-	const char *opname = (m_saveload_schedule == SLS_LOAD) ? "load" : "save";
+	const char *opnamed = (m_saveload_schedule == SLS_LOAD) ? _("loaded") : _("saved");
+	const char *opname = (m_saveload_schedule == SLS_LOAD) ? _("load") : _("save");
 	file_error filerr = FILERR_NONE;
 
 	// if no name, bail
@@ -799,7 +814,7 @@ void running_machine::handle_saveload()
 		// if more than a second has passed, we're probably screwed
 		if (attotime_sub(timer_get_time(this), m_saveload_schedule_time).seconds > 0)
 		{
-			popmessage("Unable to %s due to pending anonymous timers. See error.log for details.", opname);
+			popmessage(_("Unable to %s due to pending anonymous timers. See error.log for details."), opname);
 			goto cancel;
 		}
 		return;
@@ -819,30 +834,30 @@ void running_machine::handle_saveload()
 		switch (staterr)
 		{
 			case STATERR_ILLEGAL_REGISTRATIONS:
-				popmessage("Error: Unable to %s state due to illegal registrations. See error.log for details.", opname);
+				popmessage(_("Error: Unable to %s state due to illegal registrations. See error.log for details."), opname);
 				break;
 
 			case STATERR_INVALID_HEADER:
-				popmessage("Error: Unable to %s state due to an invalid header. Make sure the save state is correct for this game.", opname);
+				popmessage(_("Error: Unable to %s state due to an invalid header. Make sure the save state is correct for this game."), opname);
 				break;
 
 			case STATERR_READ_ERROR:
-				popmessage("Error: Unable to %s state due to a read error (file is likely corrupt).", opname);
+				popmessage(_("Error: Unable to %s state due to a read error (file is likely corrupt)."), opname);
 				break;
 
 			case STATERR_WRITE_ERROR:
-				popmessage("Error: Unable to %s state due to a write error. Verify there is enough disk space.", opname);
+				popmessage(_("Error: Unable to %s state due to a write error. Verify there is enough disk space."), opname);
 				break;
 
 			case STATERR_NONE:
 				if (!(m_game.flags & GAME_SUPPORTS_SAVE))
-					popmessage("State successfully %s.\nWarning: Save states are not officially supported for this game.", opnamed);
+					popmessage(_("State successfully %s.\nWarning: Save states are not officially supported for this game."), opnamed);
 				else
-					popmessage("State successfully %s.", opnamed);
+					popmessage(_("State successfully %s."), opnamed);
 				break;
 
 			default:
-				popmessage("Error: Unknown error during state %s.", opnamed);
+				popmessage(_("Error: Unknown error during state %s."), opnamed);
 				break;
 		}
 
@@ -852,7 +867,7 @@ void running_machine::handle_saveload()
 			osd_rmfile(fullname);
 	}
 	else
-		popmessage("Error: Failed to open file for %s operation.", opname);
+		popmessage(_("Error: Failed to open file for %s operation."), opname);
 
 	// unschedule the operation
 cancel:

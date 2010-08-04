@@ -1125,6 +1125,9 @@ static MACHINE_RESET( neogeo )
 
 	machine->device("maincpu")->reset();
 
+	// mamep: Hack for AES BIOS
+	neogeo_set_fixed_layer_source(space->machine, 1);
+
 	neogeo_reset_rng(machine);
 
 	start_interrupt_timers(machine);

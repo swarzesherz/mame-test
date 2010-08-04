@@ -16,6 +16,8 @@
 ###########################################################################
 
 
+include config.def
+
 #-------------------------------------------------
 # specify core target: mame, mess, etc.
 # specify subtarget: mame, mess, tiny, etc.
@@ -338,13 +340,18 @@ endif
 # the name is just 'target' if no subtarget; otherwise it is
 # the concatenation of the two (e.g., mametiny)
 ifeq ($(TARGET),$(SUBTARGET))
-NAME = $(TARGET)
+NAME = $(TARGET)$(EXTRA_SUFFIX)
 else
-NAME = $(TARGET)$(SUBTARGET)
+NAME = $(TARGET)$(EXTRA_SUFFIX)$(SUBTARGET)
 endif
 
 # fullname is prefix+name+suffix+suffix64+suffixdebug
 FULLNAME = $(PREFIX)$(PREFIXSDL)$(NAME)$(SUFFIX)$(SUFFIX64)$(SUFFIXDEBUG)$(SUFFIXPROFILE)
+ifdef WINUI
+MAMEUINAME = $(TARGET)$(EXTRA_SUFFIX)ui
+MAMEUIEXE = $(PREFIX)$(PREFIXSDL)$(MAMEUINAME)$(SUFFIX)$(SUFFIX64)$(SUFFIXDEBUG)$(SUFFIXPROFILE)$(EXE)
+BUILD += $(MAMEUIEXE)
+endif
 
 # add an EXE suffix to get the final emulator name
 EMULATOR = $(FULLNAME)$(EXE)
@@ -377,8 +384,16 @@ ifeq ($(TARGETOS),os2)
 DEFS = -DCRLF=3
 endif
 
+ifdef MSVC_BUILD
+    ifdef NO_FORCEINLINE
+    DEFS += -DINLINE="static __inline"
+    else
+    DEFS += -DINLINE="static __forceinline"
+    endif
+else
 # map the INLINE to something digestible by GCC
 DEFS += -DINLINE="static inline"
+endif
 
 # define LSB_FIRST if we are a little-endian target
 ifndef BIGENDIAN
@@ -400,6 +415,62 @@ endif
 # define MAME_PROFILER if we are a profiling build
 ifdef PROFILER
 DEFS += -DMAME_PROFILER
+endif
+
+ifneq ($(USE_SCALE_EFFECTS),)
+DEFS += -DUSE_SCALE_EFFECTS
+endif
+
+ifneq ($(USE_UI_COLOR_DISPLAY),)
+DEFS += -DUI_COLOR_DISPLAY
+endif
+
+ifneq ($(USE_TRANS_UI),)
+DEFS += -DTRANS_UI
+endif
+
+ifneq ($(USE_JOYSTICK_ID),)
+DEFS += -DJOYSTICK_ID
+endif
+
+ifneq ($(USE_CUSTOM_BUTTON),)
+DEFS += -DUSE_CUSTOM_BUTTON
+endif
+
+ifneq ($(USE_INP_CAPTION),)
+DEFS += -DINP_CAPTION
+endif
+
+ifneq ($(USE_AUTO_PAUSE_PLAYBACK),)
+DEFS += -DAUTO_PAUSE_PLAYBACK
+endif
+
+ifneq ($(USE_SHOW_INPUT_LOG),)
+DEFS += -DUSE_SHOW_INPUT_LOG
+endif
+
+ifneq ($(USE_VOLUME_AUTO_ADJUST),)
+DEFS += -DUSE_VOLUME_AUTO_ADJUST
+endif
+
+ifneq ($(USE_IPS),)
+DEFS += -DUSE_IPS
+endif
+
+ifneq ($(USE_DRIVER_SWITCH),)
+DEFS += -DDRIVER_SWITCH
+endif
+
+ifneq ($(USE_CMD_LIST),)
+DEFS += -DCMD_LIST
+endif
+
+ifneq ($(USE_HISCORE),)
+DEFS += -DUSE_HISCORE
+endif
+
+ifneq ($(MAMEMESS),)
+DEFS += -DMAMEMESS
 endif
 
 
@@ -454,7 +525,7 @@ CCOMFLAGS += -O$(OPTIMIZE)
 ifneq ($(OPTIMIZE),0)
 ifneq ($(TARGETOS),os2)
 ifndef NOWERROR
-CCOMFLAGS += -Werror -fno-strict-aliasing $(ARCHOPTS)
+CCOMFLAGS += -Wno-error -fno-strict-aliasing $(ARCHOPTS)
 else
 CCOMFLAGS += -fno-strict-aliasing $(ARCHOPTS)
 endif
@@ -468,7 +539,7 @@ CCOMFLAGS += \
 	-Wall \
 	-Wcast-align \
 	-Wundef \
-	-Wformat-security \
+	-Wno-format-security \
 	-Wwrite-strings \
 	-Wno-sign-compare
 
@@ -569,6 +640,7 @@ LIBDASM = $(OBJ)/libdasm.a
 LIBSOUND = $(OBJ)/libsound.a
 LIBUTIL = $(OBJ)/libutil.a
 LIBOCORE = $(OBJ)/libocore.a
+LIBOCORE_NOMAIN = $(OBJ)/libocore_nomain.a
 LIBOSD = $(OBJ)/libosd.a
 
 VERSIONOBJ = $(OBJ)/version.o
@@ -631,8 +703,16 @@ BUILDOUT = $(BUILDOBJ)
 # include the various .mak files
 #-------------------------------------------------
 
+ifdef MAMEMESS
+# mamep: must stay before MAME OSD for include MESS core defines
+include $(SRC)/mess/messcore.mak
+endif
+
 # include OSD-specific rules first
 include $(SRC)/osd/$(OSD)/$(OSD).mak
+ifdef MAMEMESS
+include $(SRC)/mess/osd/$(OSD)/$(OSD).mak
+endif
 
 # then the various core pieces
 include $(SRC)/$(TARGET)/$(SUBTARGET).mak
@@ -641,6 +721,9 @@ include $(SRC)/lib/lib.mak
 include $(SRC)/build/build.mak
 -include $(SRC)/osd/$(CROSS_BUILD_OSD)/build.mak
 include $(SRC)/tools/tools.mak
+ifdef MAMEMESS
+include $(SRC)/mess/mess.mak
+endif
 
 # combine the various definitions to one
 CDEFS = $(DEFS)
@@ -696,9 +779,16 @@ ifndef EXECUTABLE_DEFINED
 # always recompile the version string
 $(VERSIONOBJ): $(DRVLIBS) $(LIBOSD) $(LIBCPU) $(LIBEMU) $(LIBSOUND) $(LIBUTIL) $(EXPAT) $(ZLIB) $(SOFTFLOAT) $(LIBOCORE) $(RESFILE)
 
-$(EMULATOR): $(VERSIONOBJ) $(DRVLIBS) $(LIBOSD) $(LIBCPU) $(LIBEMU) $(LIBDASM) $(LIBSOUND) $(LIBUTIL) $(EXPAT) $(SOFTFLOAT) $(ZLIB) $(LIBOCORE) $(RESFILE)
+$(EMULATOR): $(VERSIONOBJ) $(DRVLIBS) $(LIBOSD) $(LIBCPU) $(LIBEMU) $(LIBDASM) $(LIBSOUND) $(LIBUTIL) $(EXPAT) $(SOFTFLOAT) $(ZLIB) $(LIBOCORE) $(RESFILE) $(CLIRESFILE)
 	@echo Linking $@...
-	$(LD) $(LDFLAGS) $(LDFLAGSEMULATOR) $^ $(LIBS) -o $@
+	$(LD) $(LDFLAGS) $(LDFLAGSEMULATOR) -mconsole $^ $(LIBS) -o $@
+
+ifdef WINUI
+$(MAMEUIEXE): $(VERSIONOBJ) $(DRVLIBS) $(LIBOSD) $(LIBCPU) $(LIBEMU) $(LIBDASM) $(LIBSOUND) $(LIBUTIL) $(EXPAT) $(SOFTFLOAT) $(ZLIB) $(LIBOCORE_NOMAIN) $(RESFILE) $(GUIRESFILE)
+	@echo Linking $@...
+	$(LD) $(LDFLAGS) $(LDFLAGSEMULATOR) -mwindows $^ $(LIBS) -o $@
+endif
+
 ifeq ($(TARGETOS),win32)
 ifdef SYMBOLS
 	$(OBJDUMP) --section=.text --line-numbers --syms --demangle $@ >$(FULLNAME).sym
@@ -712,6 +802,24 @@ endif
 #-------------------------------------------------
 # generic rules
 #-------------------------------------------------
+
+ifdef MAMEMESS
+$(OBJ)/mess/%.o: $(SRC)/mess/%.c | $(OSPREBUILD)
+	@echo Compiling $<...
+	$(CC) $(CDEFS) -DMESS $(CFLAGS) -c $< -o $@
+
+$(OBJ)/mess/devices/%.o: $(SRC)/mess/devices/%.c | $(OSPREBUILD)
+	@echo Compiling $<...
+	$(CC) $(CDEFS) -DMESS $(CFLAGS) -c $< -o $@
+
+$(OBJ)/mess/drivers/%.o: $(SRC)/mess/drivers/%.c | $(OSPREBUILD)
+	@echo Compiling $<...
+	$(CC) $(CDEFS) -DMESS $(CFLAGS) -c $< -o $@
+
+$(OBJ)/mess/osd/windows/%.o: $(SRC)/mess/osd/windows/%.c | $(OSPREBUILD)
+	@echo Compiling $<...
+	$(CC) $(CDEFS) -DMESS $(CFLAGS) -c $< -o $@
+endif
 
 $(OBJ)/%.o: $(SRC)/%.c | $(OSPREBUILD)
 	@echo Compiling $<...
@@ -729,10 +837,9 @@ $(OBJ)/%.lh: $(SRC)/%.lay $(FILE2STR)
 	@echo Converting $<...
 	@$(FILE2STR) $< $@ layout_$(basename $(notdir $<))
 
-$(OBJ)/%.fh: $(SRC)/%.png $(PNG2BDC) $(FILE2STR)
+$(OBJ)/%.fh: $(OBJ)/%.bdc $(FILE2STR)
 	@echo Converting $<...
-	@$(PNG2BDC) $< $(OBJ)/temp.bdc
-	@$(FILE2STR) $(OBJ)/temp.bdc $@ font_$(basename $(notdir $<)) UINT8
+	@$(FILE2STR) $< $@ font_$(basename $(notdir $<)) UINT8
 
 $(OBJ)/%.a:
 	@echo Archiving $@...
@@ -744,4 +851,34 @@ $(OBJ)/%.o: $(SRC)/%.m | $(OSPREBUILD)
 	@echo Objective-C compiling $<...
 	$(CC) $(CDEFS) $(COBJFLAGS) $(CCOMFLAGS) -c $< -o $@
 endif
+
+
+
+#-------------------------------------------------
+# embedded font
+#-------------------------------------------------
+
+$(EMUOBJ)/uismall11.bdc: $(PNG2BDC) \
+		$(SRC)/emu/font/uismall.png \
+		$(SRC)/emu/font/cp1250.png
+	@echo Generating $@...
+	@$^ $@
+
+$(EMUOBJ)/uismall14.bdc: $(PNG2BDC) \
+		$(SRC)/emu/font/cp1252.png \
+		$(SRC)/emu/font/cp932.png \
+		$(SRC)/emu/font/cp932hw.png \
+		$(SRC)/emu/font/cp936.png \
+		$(SRC)/emu/font/cp949.png \
+		$(SRC)/emu/font/cp950.png
+	@echo Generating $@...
+	@$^ $@
+
+$(EMUOBJ)/uicmd11.bdc: $(PNG2BDC) $(SRC)/emu/font/cmd11.png
+	@echo Generating $@...
+	@$^ $@
+
+$(EMUOBJ)/uicmd14.bdc: $(PNG2BDC) $(SRC)/emu/font/cmd14.png
+	@echo Generating $@...
+	@$^ $@
 

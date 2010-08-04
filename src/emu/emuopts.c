@@ -33,6 +33,9 @@ const options_entry mame_core_options[] =
 #else
 	{ "writeconfig;wc",				 "0",		  OPTION_BOOLEAN,	 "writes configuration to (driver).ini on exit" },
 #endif /* MESS */
+#ifdef DRIVER_SWITCH
+	{ "driver_config",               "all",       0,                 "switch drivers"},
+#endif /* DRIVER_SWITCH */
 
 	/* seach path options */
 	{ NULL,                          NULL,        OPTION_HEADER,     "CORE SEARCH PATH OPTIONS" },
@@ -43,10 +46,14 @@ const options_entry mame_core_options[] =
 	{ "samplepath;sp",               "samples",   0,                 "path to samplesets" },
 	{ "artpath;artwork_directory",   "artwork",   0,                 "path to artwork files" },
 	{ "ctrlrpath;ctrlr_directory",   "ctrlr",     0,                 "path to controller definitions" },
-	{ "inipath",                     ".;ini",     0,                 "path to ini files" },
+	{ "inipath",                     "ini",       0,                 "path to ini files" },
 	{ "fontpath",                    ".",         0,                 "path to font files" },
 	{ "cheatpath",                   "cheat",     0,                 "path to cheat files" },
 	{ "crosshairpath",               "crosshair", 0,                 "path to crosshair files" },
+	{ "langpath",                    "lang",      0,                 "path to localized languages and datafiles" },
+#ifdef USE_IPS
+	{ "ipspath",                     "ips",       0,                 "path to ips files" },
+#endif /* USE_IPS */
 
 	/* output directory options */
 	{ NULL,                          NULL,        OPTION_HEADER,     "CORE OUTPUT DIRECTORY OPTIONS" },
@@ -58,6 +65,18 @@ const options_entry mame_core_options[] =
 	{ "snapshot_directory",          "snap",      0,                 "directory to save screenshots" },
 	{ "diff_directory",              "diff",      0,                 "directory to save hard drive image difference files" },
 	{ "comment_directory",           "comments",  0,                 "directory to save debugger comments" },
+#ifdef USE_HISCORE
+	{ "hiscore_directory",           "hi",        0,                 "directory to save hiscores" },
+#endif /* USE_HISCORE */
+
+	/* filename options */
+	{ NULL,                          NULL,        OPTION_HEADER,     "CORE FILENAME OPTIONS" },
+#ifdef CMD_LIST
+	{ "command_file",               "command.dat",0,                 "command list database name" },
+#endif /* CMD_LIST */
+#ifdef USE_HISCORE
+	{ "hiscore_file",               "hiscore.dat",0,                 "high score database name" },
+#endif /* USE_HISCORE */
 
 	/* state/playback options */
 	{ NULL,                          NULL,        OPTION_HEADER,     "CORE STATE/PLAYBACK OPTIONS" },
@@ -106,6 +125,9 @@ const options_entry mame_core_options[] =
 	{ "contrast(0.1-2.0)",           "1.0",       0,                 "default game screen contrast correction" },
 	{ "gamma(0.1-3.0)",              "1.0",       0,                 "default game screen gamma correction" },
 	{ "pause_brightness(0.0-1.0)",   "0.65",      0,                 "amount to scale the screen brightness when paused" },
+#ifdef USE_SCALE_EFFECTS
+	{ "scale_effect",                "none",      0,                 "image enhancement effect" },
+#endif /* USE_SCALE_EFFECTS */
 
 	/* vector options */
 	{ NULL,                          NULL,        OPTION_HEADER,     "CORE VECTOR OPTIONS" },
@@ -119,6 +141,9 @@ const options_entry mame_core_options[] =
 	{ "samplerate;sr(1000-1000000)", "48000",     0,                 "set sound output sample rate" },
 	{ "samples",                     "1",         OPTION_BOOLEAN,    "enable the use of external samples if available" },
 	{ "volume;vol",                  "0",         0,                 "sound volume in decibels (-32 min, 0 max)" },
+#ifdef USE_VOLUME_AUTO_ADJUST
+	{ "volume_adjust",               "0",         OPTION_BOOLEAN,    "enable/disable volume auto adjust" },
+#endif /* USE_VOLUME_AUTO_ADJUST */
 
 	/* input options */
 	{ NULL,                          NULL,        OPTION_HEADER,     "CORE INPUT OPTIONS" },
@@ -163,9 +188,45 @@ const options_entry mame_core_options[] =
 	{ "bios",                        NULL,        0,                 "select the system BIOS to use" },
 	{ "cheat;c",                     "0",         OPTION_BOOLEAN,    "enable cheat subsystem" },
 	{ "skip_gameinfo",               "0",         OPTION_BOOLEAN,    "skip displaying the information screen at startup" },
+	{ "confirm_quit",                "1",         OPTION_BOOLEAN,    "quit game with confirmation" },
+#ifdef AUTO_PAUSE_PLAYBACK
+	{ "auto_pause",                  "0",         OPTION_BOOLEAN,    "automatic pause when playback is finished" },
+#endif /* AUTO_PAUSE_PLAYBACK */
+#ifdef TRANS_UI
+	{ "ui_transparency",             "215",       0,                 "transparency in-game UI [0-255]" },
+#endif /* TRANS_UI */
+#ifdef USE_IPS
+	{ "ips",                         NULL,        0,                 "ips datafile name"},
+#endif /* USE_IPS */
+
+#ifdef UI_COLOR_DISPLAY
+	/* palette options */
+	{ NULL,                          NULL,        OPTION_HEADER,     "CORE PALETTE OPTIONS" },
+	{ "main_background",             "16,16,48",    0,               "main background color" },
+	{ "cursor_sel_text",             "255,255,255", 0,               "cursor text color (selected)" },
+	{ "cursor_sel_background",       "60,120,240",  0,               "cursor background color (selected)" },
+	{ "cursor_hov_text",             "120,180,240", 0,               "cursor text color (floating)" },
+	{ "cursor_hov_background",       "32,32,0",     0,               "cursor background color (floating)" },
+	{ "button_red",                  "255,64,64",   0,               "button color (red)" },
+	{ "button_yellow",               "255,238,0",   0,               "button color (yellow)" },
+	{ "button_green",                "0,255,64",    0,               "button color (green)" },
+	{ "button_blue",                 "0,170,255",   0,               "button color (blue)" },
+	{ "button_purple",               "170,0,255",   0,               "button color (purple)" },
+	{ "button_pink",                 "255,0,170",   0,               "button color (pink)" },
+	{ "button_aqua",                 "0,255,204",   0,               "button color (aqua)" },
+	{ "button_silver",               "255,0,255",   0,               "button color (silver)" },
+	{ "button_navy",                 "255,160,0",   0,               "button color (navy)" },
+	{ "button_lime",                 "190,190,190", 0,               "button color (lime)" },
+#endif /* UI_COLOR_DISPLAY */
+
+	/* language options */
+	{ NULL,                          NULL,        OPTION_HEADER,     "CORE LANGUAGE OPTIONS" },
+	{ "language;lang",               "auto",      0,                 "select translation language" },
+	{ "use_lang_list",               "1",         OPTION_BOOLEAN,    "enable/disable local language game list" },
 
 	/* image device options */
-	{ OPTION_ADDED_DEVICE_OPTIONS,	 "0",		  OPTION_BOOLEAN | OPTION_INTERNAL,	"image device-specific options have been added" },
+	//mamep: stop adding device options until array drivers[] is ready
+	{ OPTION_ADDED_DEVICE_OPTIONS,	 "1",		  OPTION_BOOLEAN | OPTION_INTERNAL,	"image device-specific options have been added" },
 	{ NULL }
 };
 
@@ -315,7 +376,7 @@ core_options *mame_options_init(const options_entry *entries)
 	/* we need to dynamically add options when the device name is parsed */
 	options_set_option_callback(opts, OPTION_GAMENAME, image_driver_name_callback);
 
-#ifdef MESS
+#ifdef MAMEMESS
 	mess_options_init(opts);
 #endif /* MESS */
 

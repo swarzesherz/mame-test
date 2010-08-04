@@ -272,7 +272,7 @@ void state_save_register_memory(running_machine *machine, const char *module, co
 	{
 		logerror("Attempt to register save state entry after state registration is closed!\nFile: %s, line %d, module %s tag %s name %s\n", file, line, module, tag, name);
 		if (machine->gamedrv->flags & GAME_SUPPORTS_SAVE)
-			fatalerror("Attempt to register save state entry after state registration is closed!\nFile: %s, line %d, module %s tag %s name %s\n", file, line, module, tag, name);
+			fatalerror(_("Attempt to register save state entry after state registration is closed!\nFile: %s, line %d, module %s tag %s name %s\n"), file, line, module, tag, name);
 		global->illegal_regs++;
 		return;
 	}
@@ -293,7 +293,7 @@ void state_save_register_memory(running_machine *machine, const char *module, co
 
 		/* error if we are equal */
 		if (cmpval == 0)
-			fatalerror("Duplicate save state registration entry (%s)", totalname.cstr());
+			fatalerror(_("Duplicate save state registration entry (%s)"), totalname.cstr());
 	}
 
 	/* didn't find one; allocate a new one */
@@ -338,12 +338,12 @@ void state_save_register_presave(running_machine *machine, state_presave_func fu
 
 	/* check for invalid timing */
 	if (!global->reg_allowed)
-		fatalerror("Attempt to register callback function after state registration is closed!");
+		fatalerror(_("Attempt to register callback function after state registration is closed!"));
 
 	/* scan for duplicates and push through to the end */
 	for (cbptr = &global->prefunclist; *cbptr != NULL; cbptr = &(*cbptr)->next)
 		if ((*cbptr)->func.presave == func && (*cbptr)->param == param)
-			fatalerror("Duplicate save state function (%p, %p)", param, func);
+			fatalerror(_("Duplicate save state function (%p, %p)"), param, func);
 
 	/* allocate a new entry */
 	*cbptr = auto_alloc(machine, state_callback);
@@ -368,12 +368,12 @@ void state_save_register_postload(running_machine *machine, state_postload_func 
 
 	/* check for invalid timing */
 	if (!global->reg_allowed)
-		fatalerror("Attempt to register callback function after state registration is closed!");
+		fatalerror(_("Attempt to register callback function after state registration is closed!"));
 
 	/* scan for duplicates and push through to the end */
 	for (cbptr = &global->postfunclist; *cbptr != NULL; cbptr = &(*cbptr)->next)
 		if ((*cbptr)->func.postload == func && (*cbptr)->param == param)
-			fatalerror("Duplicate save state function (%p, %p)", param, func);
+			fatalerror(_("Duplicate save state function (%p, %p)"), param, func);
 
 	/* allocate a new entry */
 	*cbptr = auto_alloc(machine, state_callback);
@@ -437,7 +437,7 @@ static state_save_error validate_header(const UINT8 *header, const char *gamenam
 	if (memcmp(header, ss_magic_num, 8))
 	{
 		if (errormsg != NULL)
-			(*errormsg)("%sThis is not a " APPNAME " save file", error_prefix);
+			(*errormsg)(_("%sThis is not a " APPNAME " save file"), error_prefix);
 		return STATERR_INVALID_HEADER;
 	}
 
@@ -445,7 +445,7 @@ static state_save_error validate_header(const UINT8 *header, const char *gamenam
 	if (header[8] != SAVE_VERSION)
 	{
 		if (errormsg != NULL)
-			(*errormsg)("%sWrong version in save file (version %d, expected %d)", error_prefix, header[8], SAVE_VERSION);
+			(*errormsg)(_("%sWrong version in save file (version %d, expected %d)"), error_prefix, header[8], SAVE_VERSION);
 		return STATERR_INVALID_HEADER;
 	}
 
@@ -453,7 +453,7 @@ static state_save_error validate_header(const UINT8 *header, const char *gamenam
 	if (gamename != NULL && strncmp(gamename, (const char *)&header[0x0a], 0x1c - 0x0a))
 	{
 		if (errormsg != NULL)
-			(*errormsg)("%s'File is not a valid savestate file for game '%s'.", error_prefix, gamename);
+			(*errormsg)(_("%s'File is not a valid savestate file for game '%s'."), error_prefix, gamename);
 		return STATERR_INVALID_HEADER;
 	}
 
@@ -464,7 +464,7 @@ static state_save_error validate_header(const UINT8 *header, const char *gamenam
 		if (signature != LITTLE_ENDIANIZE_INT32(rawsig))
 		{
 			if (errormsg != NULL)
-				(*errormsg)("%sIncompatible save file (signature %08x, expected %08x)", error_prefix, LITTLE_ENDIANIZE_INT32(rawsig), signature);
+				(*errormsg)(_("%sIncompatible save file (signature %08x, expected %08x)"), error_prefix, LITTLE_ENDIANIZE_INT32(rawsig), signature);
 			return STATERR_INVALID_HEADER;
 		}
 	}
@@ -492,7 +492,7 @@ state_save_error state_save_check_file(running_machine *machine, mame_file *file
 	if (mame_fread(file, header, sizeof(header)) != sizeof(header))
 	{
 		if (errormsg != NULL)
-			(*errormsg)("Could not read " APPNAME " save file header");
+			(*errormsg)(_("Could not read " APPNAME " save file header"));
 		return STATERR_READ_ERROR;
 	}
 
@@ -534,7 +534,7 @@ state_save_error state_save_write_file(running_machine *machine, mame_file *file
 
 	/* call the pre-save functions */
 	for (func = global->prefunclist; func != NULL; func = func->next)
-		(*func->func.presave)(machine, func->param);
+			(*func->func.presave)(machine, func->param);
 
 	/* then write all the data */
 	for (entry = global->entrylist; entry != NULL; entry = entry->next)
@@ -573,7 +573,7 @@ state_save_error state_save_read_file(running_machine *machine, mame_file *file)
 	mame_fcompress(file, FCOMPRESS_MEDIUM);
 
 	/* verify the header and report an error if it doesn't match */
-	if (validate_header(header, machine->gamedrv->name, signature, popmessage, "Error: ")  != STATERR_NONE)
+	if (validate_header(header, machine->gamedrv->name, signature, popmessage, _("Error: "))  != STATERR_NONE)
 		return STATERR_INVALID_HEADER;
 
 	/* determine whether or not to flip the data when done */

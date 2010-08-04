@@ -231,6 +231,14 @@ SOUNDS += MOS656X
 
 DRVLIBS = \
 	$(MAMEOBJ)/mamedriv.o \
+
+ifneq ($(USE_DRIVER_SWITCH),)
+DRVLIBS += $(MAMEOBJ)/mameplusdriv.o \
+            $(MAMEOBJ)/mamehbdriv.o \
+            $(MAMEOBJ)/mamedecrypteddriv.o
+endif
+
+DRVLIBS += \
 	$(MAMEOBJ)/alba.a \
 	$(MAMEOBJ)/alliedl.a \
 	$(MAMEOBJ)/alpha.a \
@@ -1792,6 +1800,8 @@ $(DRIVERS)/norautp.o:	$(LAYOUT)/noraut11.lh \
 						$(LAYOUT)/noraut12.lh
 
 $(DRIVERS)/overdriv.o:	$(LAYOUT)/overdriv.lh
+
+$(DRIVERS)/cps3.o:	$(LAYOUT)/cps3.lh
 
 $(DRIVERS)/peplus.o:	$(LAYOUT)/peplus.lh \
 						$(LAYOUT)/pe_schip.lh \

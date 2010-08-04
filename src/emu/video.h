@@ -265,6 +265,31 @@ private:
 		void *						m_param;
 	};
 	callback_item *			m_callback_list;		// list of VBLANK callbacks
+
+#ifdef USE_SCALE_EFFECTS
+public:
+	// scale effect rendering
+	void video_init_scale_effect();
+	void video_exit_scale_effect();
+
+private:
+	void free_scale_bitmap();
+	void convert_palette_to_32(const bitmap_t *src, bitmap_t *dst, const rectangle *visarea, UINT32 palettebase);
+	void convert_palette_to_15(const bitmap_t *src, bitmap_t *dst, const rectangle *visarea, UINT32 palettebase);
+	void texture_set_scale_bitmap(const rectangle *visarea, UINT32 palettebase);
+	void realloc_scale_bitmaps();
+
+	// scaler dimensions
+	int					use_work_bitmap;
+	int					scale_depth;
+	int					scale_xsize;
+	int					scale_ysize;
+
+	int					scale_bank_offset;
+	bitmap_t *				scale_bitmap[2];
+	bitmap_t *				work_bitmap[2];
+	int					scale_dirty[2];
+#endif /* USE_SCALE_EFFECTS */
 };
 
 

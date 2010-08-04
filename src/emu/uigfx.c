@@ -987,9 +987,9 @@ static void tilemap_handle_keys(running_machine *machine, ui_gfx_state *state, i
 	if (state->tilemap.zoom != oldstate.tilemap.zoom)
 	{
 		if (state->tilemap.zoom != 0)
-			popmessage("Zoom = %d", state->tilemap.zoom);
+			popmessage(_("Zoom = %d"), state->tilemap.zoom);
 		else
-			popmessage("Zoom Auto");
+			popmessage(_("Zoom Auto"));
 	}
 
 	/* handle rotation (R) */

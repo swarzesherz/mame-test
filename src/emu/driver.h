@@ -45,6 +45,9 @@
 #define GAME_REQUIRES_ARTWORK			0x00004000	/* the driver requires external artwork for key elements of the game */
 #define GAME_UNOFFICIAL     			0x00008000	/* unofficial hardware change */
 #define GAME_NO_SOUND_HW				0x00010000	/* sound hardware not available */
+#ifdef MAMEMESS
+#define GAME_CONSOLE					0x00020000	/* Driver is a console */
+#endif // MAMEMESS
 
 
 /* ----- flags to return from video_update ----- */
@@ -120,7 +123,16 @@ extern const game_driver GAME_NAME(NAME) =	\
     GLOBAL VARIABLES
 ***************************************************************************/
 
+#ifndef DRIVER_SWITCH
 extern const game_driver * const drivers[];
+#else /* DRIVER_SWITCH */
+extern const game_driver ** drivers;
+extern const game_driver * const mamedrivers[];
+extern const game_driver * const plusdrivers[];
+extern const game_driver * const homebrewdrivers[];
+extern const game_driver * const decrypteddrivers[];
+extern const game_driver * const consoledrivers[];
+#endif /* DRIVER_SWITCH */
 
 GAME_EXTERN(empty);
 

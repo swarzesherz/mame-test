@@ -14,6 +14,7 @@
 #ifndef __FILEIO_H__
 #define __FILEIO_H__
 
+#include <stdarg.h>
 #include "corefile.h"
 
 
@@ -23,9 +24,9 @@
 ***************************************************************************/
 
 /* search paths */
-#define SEARCHPATH_RAW             NULL
-#define SEARCHPATH_LANGUAGE        NULL
-#define SEARCHPATH_DEBUGLOG        NULL
+#define SEARCHPATH_RAW			NULL
+#define SEARCHPATH_LANGUAGE		NULL
+#define SEARCHPATH_DEBUGLOG		NULL
 
 #define SEARCHPATH_ROM             OPTION_ROMPATH
 #ifdef MESS
@@ -42,6 +43,10 @@
 #define SEARCHPATH_FONT            OPTION_FONTPATH
 #define SEARCHPATH_CHEAT           OPTION_CHEATPATH
 #define SEARCHPATH_CROSSHAIRPATH   OPTION_CROSSHAIRPATH
+#define SEARCHPATH_LANGDATA        OPTION_LANGPATH
+#ifdef USE_IPS
+#define SEARCHPATH_IPS             OPTION_IPSPATH
+#endif /* USE_IPS */
 
 #define SEARCHPATH_IMAGE_DIFF      OPTION_DIFF_DIRECTORY
 #define SEARCHPATH_NVRAM           OPTION_NVRAM_DIRECTORY
@@ -52,6 +57,9 @@
 #define SEARCHPATH_SCREENSHOT      OPTION_SNAPSHOT_DIRECTORY
 #define SEARCHPATH_MOVIE           OPTION_SNAPSHOT_DIRECTORY
 #define SEARCHPATH_COMMENT         OPTION_COMMENT_DIRECTORY
+#ifdef USE_HISCORE
+#define SEARCHPATH_HISCORE         OPTION_HISCORE_DIRECTORY
+#endif /* USE_HISCORE */
 
 
 
@@ -148,6 +156,9 @@ int mame_fputs(mame_file *f, const char *s);
 
 /* printf-style text write to a file */
 int CLIB_DECL mame_fprintf(mame_file *f, const char *fmt, ...) ATTR_PRINTF(2,3);
+
+/* printf-style text write to a file */
+int CLIB_DECL mame_vfprintf(mame_file *f, const char *fmt, va_list va);
 
 
 

@@ -281,6 +281,7 @@ static int is_double_click_start(int argc);
 static DWORD WINAPI watchdog_thread_entry(LPVOID lpParameter);
 static LONG WINAPI exception_filter(struct _EXCEPTION_POINTERS *info);
 static void winui_output_error(void *param, const char *format, va_list argptr);
+static void win_mame_file_output_callback(void *param, const char *format, va_list argptr);
 
 
 
@@ -364,10 +365,21 @@ const options_entry mame_win_options[] =
 	// sound options
 	{ NULL,                       NULL,       OPTION_HEADER,     "WINDOWS SOUND OPTIONS" },
 	{ "audio_latency(1-5)",       "2",        0,                 "set audio latency (increase to reduce glitches)" },
+	{ "audio_sync",               "0",        OPTION_BOOLEAN,    "enable audio sync" },
 
 	// input options
 	{ NULL,                       NULL,       OPTION_HEADER,     "INPUT DEVICE OPTIONS" },
 	{ "dual_lightgun;dual",       "0",        OPTION_BOOLEAN,    "enable dual lightgun input" },
+#ifdef JOYSTICK_ID
+	{ "joyid1(0-7)",              "0",        0,                 "set joystick ID (Player1)" },
+	{ "joyid2(0-7)",              "1",        0,                 "set joystick ID (Player2)" },
+	{ "joyid3(0-7)",              "2",        0,                 "set joystick ID (Player3)" },
+	{ "joyid4(0-7)",              "3",        0,                 "set joystick ID (Player4)" },
+	{ "joyid5(0-7)",              "4",        0,                 "set joystick ID (Player5)" },
+	{ "joyid6(0-7)",              "5",        0,                 "set joystick ID (Player6)" },
+	{ "joyid7(0-7)",              "6",        0,                 "set joystick ID (Player7)" },
+	{ "joyid8(0-7)",              "7",        0,                 "set joystick ID (Player8)" },
+#endif /* JOYSTICK_ID */
 
 	{ NULL }
 };
@@ -405,12 +417,26 @@ int main(int argc, char *argv[])
 		// make sure any console window that opened on our behalf is nuked
 		FreeConsole();
 	}
+	else
+		mame_set_output_channel(OUTPUT_CHANNEL_ERROR, win_mame_file_output_callback, stderr, NULL, NULL);
+
+	mame_set_output_channel(OUTPUT_CHANNEL_WARNING, win_mame_file_output_callback, stderr, NULL, NULL);
+	mame_set_output_channel(OUTPUT_CHANNEL_INFO, win_mame_file_output_callback, stdout, NULL, NULL);
+#ifdef MAME_DEBUG
+	mame_set_output_channel(OUTPUT_CHANNEL_DEBUG, win_mame_file_output_callback, stdout, NULL, NULL);
+#endif
+	mame_set_output_channel(OUTPUT_CHANNEL_VERBOSE, win_mame_file_output_callback, stdout, NULL, NULL);
+	mame_set_output_channel(OUTPUT_CHANNEL_LOG, win_mame_file_output_callback, stderr, NULL, NULL);
+
+	// set up language for windows
+	assign_msg_catategory(UI_MSG_OSD0, "windows");
 
 	// parse config and cmdline options
 	DWORD result = cli_execute(argc, argv, mame_win_options);
 
 	// free symbols
 	symbols = NULL;
+	ui_lang_shutdown();
 	return result;
 }
 
@@ -568,6 +594,22 @@ static void osd_exit(running_machine &machine)
 
 	// one last pass at events
 	winwindow_process_events(&machine, 0);
+}
+
+
+//============================================================
+//  win_mame_file_output_callback
+//============================================================
+
+static void win_mame_file_output_callback(void *param, const char *format, va_list argptr)
+{
+	char buf[5000];
+	CHAR *s;
+
+	vsnprintf(buf, ARRAY_LENGTH(buf), format, argptr);
+	s = astring_from_utf8(buf);
+	fputs(s, (FILE *)param);
+	global_free(s);
 }
 
 

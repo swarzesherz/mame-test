@@ -51,7 +51,7 @@
                 - calls debugger_init() [debugger.c] to set up the debugger
                 - calls the driver's MACHINE_START, SOUND_START, and VIDEO_START callbacks
                 - calls cheat_init() [cheat.c] to initialize the cheat system
-                - calls image_init() [image.c] to initialize the image system
+				- calls image_init() [image.c] to initialize the image system
 
             - calls config_load_settings() [config.c] to load the configuration file
             - calls nvram_load [machine/generic.c] to load NVRAM
@@ -88,6 +88,7 @@
 #include "crsshair.h"
 #include "validity.h"
 #include "debug/debugcon.h"
+#include "clifront.h"
 
 #include <time.h>
 
@@ -126,7 +127,9 @@ const char mame_disclaimer[] =
     FUNCTION PROTOTYPES
 ***************************************************************************/
 
+#if 0 //mamep: moved to mame.h
 static int parse_ini_file(core_options *options, const char *name, int priority);
+#endif
 
 
 
@@ -494,6 +497,7 @@ void CLIB_DECL logerror(const char *format, ...)
 void mame_parse_ini_files(core_options *options, const game_driver *driver)
 {
 	/* parse the INI file defined by the platform (e.g., "mame.ini") */
+	options_set_string(options, OPTION_INIPATH, ".", OPTION_PRIORITY_INI);
 	/* we do this twice so that the first file can change the INI path */
 	parse_ini_file(options, CONFIGNAME, OPTION_PRIORITY_MAME_INI);
 	parse_ini_file(options, CONFIGNAME, OPTION_PRIORITY_MAME_INI);
@@ -541,6 +545,12 @@ void mame_parse_ini_files(core_options *options, const game_driver *driver)
 		if (parent != NULL)
 			parse_ini_file(options, parent->name, OPTION_PRIORITY_PARENT_INI);
 #endif	/* MESS */
+
+#ifdef USE_IPS
+		// mamep: hack, DO NOT INHERIT IPS CONFIGURATION
+		options_set_string(options, OPTION_IPS, NULL, OPTION_PRIORITY_INI);
+#endif /* USE_IPS */		
+
 		parse_ini_file(options, driver->name, OPTION_PRIORITY_DRIVER_INI);
 	}
 }
@@ -550,7 +560,7 @@ void mame_parse_ini_files(core_options *options, const game_driver *driver)
     parse_ini_file - parse a single INI file
 -------------------------------------------------*/
 
-static int parse_ini_file(core_options *options, const char *name, int priority)
+int parse_ini_file(core_options *options, const char *name, int priority)
 {
 	file_error filerr;
 	mame_file *file;
@@ -571,8 +581,9 @@ static int parse_ini_file(core_options *options, const char *name, int priority)
 	}
 
 	/* parse the file and close it */
-	mame_printf_verbose("Parsing %s.ini\n", name);
+	mame_printf_verbose(_("Parsing %s.ini\n"), name);
 	options_parse_ini_file(options, mame_core_file(file), priority);
 	mame_fclose(file);
+	setup_language(options);
 	return TRUE;
 }

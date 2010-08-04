@@ -137,6 +137,47 @@ struct rom_entry
 
 
 
+//mamep: moved from romload.c
+typedef struct _open_chd open_chd;
+struct _open_chd
+{
+	open_chd *			next;					/* pointer to next in the list */
+	const char *		region;					/* disk region we came from */
+	chd_file *			origchd;				/* handle to the original CHD */
+	mame_file *			origfile;				/* file handle to the original CHD file */
+	chd_file *			diffchd;				/* handle to the diff CHD */
+	mame_file *			difffile;				/* file handle to the diff CHD file */
+};
+
+
+typedef struct _romload_private rom_load_data;
+struct _romload_private
+{
+	running_machine *machine;			/* machine object where needed */
+	int				system_bios;		/* the system BIOS we wish to load */
+
+	int				warnings;			/* warning count during processing */
+	int				errors;				/* error count during processing */
+
+	int				romsloaded;			/* current ROMs loaded count */
+	int				romstotal;			/* total number of ROMs to read */
+	UINT32			romsloadedsize;		/* total size of ROMs loaded so far */
+	UINT32			romstotalsize;		/* total size of ROMs to read */
+
+	mame_file *		file;				/* current file */
+#ifdef USE_IPS
+	void *			patch;				/* current ips */
+#endif /* USE_IPS */
+	open_chd *		chd_list;			/* disks */
+	open_chd **		chd_list_tailptr;
+
+	region_info *	region;				/* info about current region */
+
+	astring			errorstring;		/* error string */
+};
+
+
+
 /***************************************************************************
     MACROS
 ***************************************************************************/

@@ -37,7 +37,11 @@
 #define ARGB_WHITE				MAKE_ARGB(0xff,0xff,0xff,0xff)
 #define ARGB_BLACK				MAKE_ARGB(0xff,0x00,0x00,0x00)
 #define UI_BORDER_COLOR			MAKE_ARGB(0xff,0xff,0xff,0xff)
+#ifdef UI_COLOR_DISPLAY
+#define UI_BACKGROUND_COLOR		SYSTEM_COLOR_BACKGROUND
+#else /* UI_COLOR_DISPLAY */
 #define UI_BACKGROUND_COLOR		MAKE_ARGB(0xe0,0x10,0x10,0x30)
+#endif /* UI_COLOR_DISPLAY */
 #define UI_GFXVIEWER_BG_COLOR	MAKE_ARGB(0xe0,0x10,0x10,0x30)
 #define UI_GREEN_COLOR			MAKE_ARGB(0xe0,0x10,0x60,0x10)
 #define UI_YELLOW_COLOR			MAKE_ARGB(0xe0,0x60,0x60,0x10)
@@ -47,10 +51,17 @@
 #define UI_TEXT_BG_COLOR		MAKE_ARGB(0xe0,0x00,0x00,0x00)
 #define UI_SUBITEM_COLOR		MAKE_ARGB(0xff,0xff,0xff,0xff)
 #define UI_CLONE_COLOR			MAKE_ARGB(0xff,0x80,0x80,0x80)
+#ifdef UI_COLOR_DISPLAY
+#define UI_SELECTED_COLOR		ui_get_rgb_color(CURSOR_SELECTED_TEXT)
+#define UI_SELECTED_BG_COLOR		ui_get_rgb_color(CURSOR_SELECTED_BG)
+#define UI_MOUSEOVER_COLOR		ui_get_rgb_color(CURSOR_HOVER_TEXT)
+#define UI_MOUSEOVER_BG_COLOR		ui_get_rgb_color(CURSOR_HOVER_BG)
+#else /* UI_COLOR_DISPLAY */
 #define UI_SELECTED_COLOR		MAKE_ARGB(0xff,0xff,0xff,0x00)
 #define UI_SELECTED_BG_COLOR	MAKE_ARGB(0xe0,0x80,0x80,0x00)
 #define UI_MOUSEOVER_COLOR		MAKE_ARGB(0xff,0xff,0xff,0x80)
 #define UI_MOUSEOVER_BG_COLOR	MAKE_ARGB(0x70,0x40,0x40,0x00)
+#endif /* UI_COLOR_DISPLAY */
 #define UI_MOUSEDOWN_COLOR		MAKE_ARGB(0xff,0xff,0xff,0x80)
 #define UI_MOUSEDOWN_BG_COLOR	MAKE_ARGB(0xb0,0x60,0x60,0x00)
 #define UI_DIPSW_COLOR			MAKE_ARGB(0xff,0xff,0xff,0x00)
@@ -113,6 +124,7 @@ struct _slider_state
 ***************************************************************************/
 
 #define ui_draw_message_window(c, text) ui_draw_text_box(c, text, JUSTIFY_LEFT, 0.5f, 0.5f, UI_BACKGROUND_COLOR)
+#define ui_draw_message_window_fixed_width(c, text) ui_draw_text_box_fixed_width(c, text, JUSTIFY_LEFT, 0.5f, 0.5f, UI_BACKGROUND_COLOR)
 
 
 
@@ -142,6 +154,13 @@ float ui_get_line_height(void);
 float ui_get_char_width(unicode_char ch);
 float ui_get_string_width(const char *s);
 
+#ifdef UI_COLOR_DISPLAY
+rgb_t ui_get_rgb_color(rgb_t color);
+#endif /* UI_COLOR_DISPLAY */
+
+/* draw a box filled with a given color */
+void ui_draw_box(render_container *container, float x0, float y0, float x1, float y1, rgb_t backcolor);
+
 /* draw an outlined box filled with a given color */
 void ui_draw_outlined_box(render_container *container, float x0, float y0, float x1, float y1, rgb_t backcolor);
 
@@ -150,9 +169,12 @@ void ui_draw_text(render_container *container, const char *buf, float x, float y
 
 /* full-on text draw with all the options */
 void ui_draw_text_full(render_container *container, const char *origs, float x, float y, float wrapwidth, int justify, int wrap, int draw, rgb_t fgcolor, rgb_t bgcolor, float *totalwidth, float *totalheight);
+int ui_draw_text_set_fixed_width_mode(int mode);
 
 /* draw a multi-line message with a box around it */
 void ui_draw_text_box(render_container *container, const char *text, int justify, float xpos, float ypos, rgb_t backcolor);
+void ui_draw_text_box_fixed_width(render_container *container, const char *text, int justify, float xpos, float ypos, rgb_t backcolor);
+void ui_draw_text_box_reset_scroll(void);
 
 /* display a temporary message at the bottom of the screen */
 void CLIB_DECL ui_popup_time(int seconds, const char *text, ...) ATTR_PRINTF(2,3);
@@ -188,5 +210,9 @@ int ui_get_use_natural_keyboard(running_machine *machine);
 
 /* specifies whether the natural keyboard is active */
 void ui_set_use_natural_keyboard(running_machine *machine, int use_natural_keyboard);
+
+void ui_auto_pause(void);
+
+int ui_window_scroll_keys(running_machine *machine);
 
 #endif	/* __USRINTRF_H__ */

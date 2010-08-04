@@ -26,6 +26,8 @@ OBJDIRS += \
 	$(MACHINE) \
 	$(VIDEO) \
 
+DEFS += -DTINY_BUILD
+
 
 
 #-------------------------------------------------
@@ -35,11 +37,13 @@ OBJDIRS += \
 
 CPUS += Z80
 CPUS += M6502
-CPUS += MCS48
+CPUS += I386
+#CPUS += MCS48
 CPUS += MCS51
 CPUS += M6800
 CPUS += M6809
 CPUS += M680X0
+CPUS += SH2
 
 
 
@@ -48,18 +52,26 @@ CPUS += M680X0
 # drivers referenced in tiny.c.
 #-------------------------------------------------
 
-SOUNDS += CUSTOM
-SOUNDS += SAMPLES
+#SOUNDS += CUSTOM
+#SOUNDS += SAMPLES
 SOUNDS += DAC
 SOUNDS += DISCRETE
-SOUNDS += AY8910
+#SOUNDS += AY8910
 SOUNDS += YM2151
+SOUNDS += YM2203
+SOUNDS += YM2608
+SOUNDS += YM2610
+SOUNDS += YMF278B
+SOUNDS += YMZ280B
 SOUNDS += ASTROCADE
 SOUNDS += TMS5220
+ifdef WINUI
+SOUNDS += VLM5030
+endif
 SOUNDS += OKIM6295
 SOUNDS += HC55516
 SOUNDS += YM3812
-SOUNDS += CEM3394
+#SOUNDS += CEM3394
 
 
 
@@ -85,6 +97,39 @@ DRVLIBS = \
 	$(AUDIO)/wow.o \
 	$(DRIVERS)/gaelco.o $(VIDEO)/gaelco.o $(MACHINE)/gaelcrpt.o \
 	$(DRIVERS)/wrally.o $(MACHINE)/wrally.o $(VIDEO)/wrally.o \
+
+DRVLIBS += \
+	$(MAMEOBJ)/psikyo.a \
+	$(MAMEOBJ)/misc.a \
+	$(MAMEOBJ)/shared.a \
+
+
+
+#-------------------------------------------------
+# the following files are general components and
+# shared across a number of drivers
+#-------------------------------------------------
+
+$(MAMEOBJ)/shared.a: \
+	$(MACHINE)/nmk112.o \
+
+
+
+#-------------------------------------------------
+# manufacturer-specific groupings for drivers
+#-------------------------------------------------
+
+$(MAMEOBJ)/psikyo.a: \
+	$(DRIVERS)/psikyo.o $(VIDEO)/psikyo.o \
+	$(DRIVERS)/psikyosh.o $(VIDEO)/psikyosh.o \
+
+
+#-------------------------------------------------
+# remaining drivers
+#-------------------------------------------------
+
+$(MAMEOBJ)/misc.a: \
+	$(DRIVERS)/cave.o $(VIDEO)/cave.o \
 
 
 

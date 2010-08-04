@@ -205,6 +205,14 @@ void kf2k3pl_install_protection(running_machine *machine);
 void samsho5b_px_decrypt(running_machine *machine);
 void samsho5b_vx_decrypt(running_machine *machine);
 void matrimbl_decrypt(running_machine *machine);
+void decrypt_matrimbl(running_machine *machine);
+void kof96ep_px_decrypt(running_machine *machine);
+void kf2k1pa_sx_decrypt(running_machine *machine);
+void cthd2k3a_px_decrypt(running_machine *machine);
+void kf2k2mp_px_decrypt(running_machine *machine);
+void kof2002b_gfx_decrypt(running_machine *machine, UINT8 *src, int size);
+void cthd2003_AES_protection(running_machine *machine);
+void kof10thu_decrypt_68K(running_machine *machine);
 
 
 /*----------- defined in video/neogeo.c -----------*/

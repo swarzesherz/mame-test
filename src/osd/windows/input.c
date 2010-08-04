@@ -236,6 +236,9 @@ static device_info *		lightgun_list;
 
 // joystick states
 static device_info *		joystick_list;
+#ifdef JOYSTICK_ID
+static int			joyid[8];
+#endif /* JOYSTICK_ID */
 
 // default axis names
 static const TCHAR *const default_axis_name[] =
@@ -304,6 +307,9 @@ static void rawinput_mouse_poll(device_info *devinfo);
 static TCHAR *reg_query_string(HKEY key, const TCHAR *path);
 static const TCHAR *default_button_name(int which);
 static const TCHAR *default_pov_name(int which);
+#ifdef JOYSTICK_ID
+static void assign_joystick_to_player(running_machine *machine, device_info *devinfo);
+#endif /* JOYSTICK_ID */
 
 
 
@@ -423,6 +429,9 @@ static const int win_key_trans_table[][4] =
 	{ ITEM_ID_MENU, 		DIK_APPS,			VK_APPS,		0 },
 	{ ITEM_ID_PAUSE,		DIK_PAUSE,			VK_PAUSE,		0 },
 	{ ITEM_ID_CANCEL,		0,					VK_CANCEL,		0 },
+	{ ITEM_ID_KANA,			DIK_KANA,			0x15,	 		0 },
+	{ ITEM_ID_CONVERT,		DIK_CONVERT,		0x1c,			0 },
+	{ ITEM_ID_NONCONVERT,	DIK_NOCONVERT,		0x1d,			0 },
 
 	// New keys introduced in Windows 2000. These have no MAME codes to
 	// preserve compatibility with old config files that may refer to them
@@ -515,6 +524,51 @@ void wininput_init(running_machine *machine)
 
 	// decode the options
 	lightgun_shared_axis_mode = options_get_bool(machine->options(), WINOPTION_DUAL_LIGHTGUN);
+
+#ifdef JOYSTICK_ID
+	{
+		int used_id[8];
+		int i;
+
+		for (i = 0; i < 8; i++)
+			used_id[i] = -1;
+
+		for (i = 0; i < 8; i++)
+		{
+			char name[8];
+			int id;
+
+			sprintf(name, "joyid%d", i + 1);
+			id = options_get_int(mame_options(), name);
+
+			if (used_id[id] == -1)
+			{
+				joyid[i] =  id;
+				used_id[id] = i;
+			}
+			else
+			{
+				mame_printf_error(_WINDOWS("invalid %s value: joystick #%d is used by player %d\n"), name, id, used_id[id]);
+				joyid[i] =  -1;
+			}
+		}
+
+		for (i = 0; i < 8; i++)
+		{
+			if (joyid[i] == -1)
+			{
+				int id;
+
+				for (id = 0; id < 8; id++)
+					if (used_id[id] == -1)
+						break;
+				joyid[i] = id;
+
+				mame_printf_info(_WINDOWS("Use joystick #%d for player %d\n"), joyid[i], i);
+			}
+		}
+	}
+#endif /* JOYSTICK_ID */
 
 	// initialize RawInput and DirectInput (RawInput first so we can fall back)
 	rawinput_init(machine);
@@ -776,7 +830,7 @@ void osd_customize_input_type_list(input_type_desc *typelist)
 			// alt-enter for fullscreen
 			case IPT_OSD_1:
 				typedesc->token = "TOGGLE_FULLSCREEN";
-				typedesc->name = "Toggle Fullscreen";
+				typedesc->name = _WINDOWS("Toggle Fullscreen");
 				input_seq_set_2(&typedesc->seq[SEQ_TYPE_STANDARD], KEYCODE_LALT, KEYCODE_ENTER);
 				break;
 
@@ -784,12 +838,17 @@ void osd_customize_input_type_list(input_type_desc *typelist)
 				if (ui_use_newui())
 				{
 					typedesc->token = "TOGGLE_MENUBAR";
-					typedesc->name = "Toggle Menu Bar";
+					typedesc->name = _WINDOWS("Toggle Menu Bar");
+#ifdef MAMEMESS
+					//mamep: we want to use both MESS-newui and in-game-UI
+					input_seq_set_1(&typedesc->seq[SEQ_TYPE_STANDARD], KEYCODE_SCRLOCK);
+#else
 					input_seq_set_1(&typedesc->seq[SEQ_TYPE_STANDARD], KEYCODE_ESC);
+#endif
 				}
 				break;
 
-#ifdef MESS
+#if 0			// mamep: keep default key setting
 			case IPT_UI_THROTTLE:
 				input_seq_set_0(&typedesc->seq[SEQ_TYPE_STANDARD]);
 				break;
@@ -1131,7 +1190,7 @@ static void dinput_init(running_machine *machine)
 	}
 #endif
 
-	mame_printf_verbose("DirectInput: Using DirectInput %d\n", dinput_version >> 8);
+	mame_printf_verbose(_WINDOWS("DirectInput: Using DirectInput %d\n"), dinput_version >> 8);
 
 	// we need an exit callback
 	machine->add_notifier(MACHINE_NOTIFY_EXIT, dinput_exit);
@@ -1142,7 +1201,7 @@ static void dinput_init(running_machine *machine)
 		// enumerate the ones we have
 		result = IDirectInput_EnumDevices(dinput, didevtype_keyboard, dinput_keyboard_enum, machine, DIEDFL_ATTACHEDONLY);
 		if (result != DI_OK)
-			fatalerror("DirectInput: Unable to enumerate keyboards (result=%08X)\n", (UINT32)result);
+			fatalerror(_WINDOWS("DirectInput: Unable to enumerate keyboards (result=%08X)\n"), (UINT32)result);
 	}
 
 	// initialize mouse & lightgun devices, but only if we don't have any yet
@@ -1151,13 +1210,40 @@ static void dinput_init(running_machine *machine)
 		// enumerate the ones we have
 		result = IDirectInput_EnumDevices(dinput, didevtype_mouse, dinput_mouse_enum, machine, DIEDFL_ATTACHEDONLY);
 		if (result != DI_OK)
-			fatalerror("DirectInput: Unable to enumerate mice (result=%08X)\n", (UINT32)result);
+			fatalerror(_WINDOWS("DirectInput: Unable to enumerate mice (result=%08X)\n"), (UINT32)result);
 	}
 
 	// initialize joystick devices
 	result = IDirectInput_EnumDevices(dinput, didevtype_joystick, dinput_joystick_enum, machine, DIEDFL_ATTACHEDONLY);
 	if (result != DI_OK)
-		fatalerror("DirectInput: Unable to enumerate joysticks (result=%08X)\n", (UINT32)result);
+		fatalerror(_WINDOWS("DirectInput: Unable to enumerate joysticks (result=%08X)\n"), (UINT32)result);
+
+#ifdef JOYSTICK_ID
+	if (joystick_list != NULL)
+	{
+		int i;
+
+		for (i = 0; i < 8; i++)
+		{
+			device_info *devinfo = joystick_list;
+			int index = 0;
+
+			while (devinfo != NULL)
+			{
+				if (index == joyid[i])
+				{
+					mame_printf_info(_WINDOWS("Assign joystick %s to player %d\n"), devinfo->name, i);
+					assign_joystick_to_player(machine, devinfo);
+					break;
+				}
+
+				index++;
+				devinfo = devinfo->next;
+			}
+		}
+	}
+#endif /* JOYSTICK_ID */
+
 }
 
 
@@ -1428,7 +1514,7 @@ static BOOL CALLBACK dinput_mouse_enum(LPCDIDEVICEINSTANCE instance, LPVOID ref)
 	result = dinput_set_dword_property(devinfo->dinput.device, DIPROP_AXISMODE, 0, DIPH_DEVICE, DIPROPAXISMODE_REL);
 	if (result != DI_OK)
 	{
-		mame_printf_error("DirectInput: Unable to set relative mode for mouse %d (%s)\n", generic_device_index(mouse_list, devinfo), devinfo->name);
+		mame_printf_error(_WINDOWS("DirectInput: Unable to set relative mode for mouse %d (%s)\n"), generic_device_index(mouse_list, devinfo), devinfo->name);
 		goto error;
 	}
 
@@ -1508,7 +1594,6 @@ static void dinput_mouse_poll(device_info *devinfo)
 static BOOL CALLBACK dinput_joystick_enum(LPCDIDEVICEINSTANCE instance, LPVOID ref)
 {
 	DWORD cooperative_level = (HAS_WINDOW_MENU ? DISCL_BACKGROUND : DISCL_FOREGROUND) | DISCL_EXCLUSIVE;
-	int axisnum, axiscount, povnum, butnum;
 	running_machine *machine = (running_machine *)ref;
 	device_info *devinfo;
 	HRESULT result;
@@ -1521,22 +1606,34 @@ static BOOL CALLBACK dinput_joystick_enum(LPCDIDEVICEINSTANCE instance, LPVOID r
 	// set absolute mode
 	result = dinput_set_dword_property(devinfo->dinput.device, DIPROP_AXISMODE, 0, DIPH_DEVICE, DIPROPAXISMODE_ABS);
 	if (result != DI_OK)
-		mame_printf_warning("DirectInput: Unable to set absolute mode for joystick %d (%s)\n", generic_device_index(joystick_list, devinfo), devinfo->name);
+		mame_printf_warning(_WINDOWS("DirectInput: Unable to set absolute mode for joystick %d (%s)\n"), generic_device_index(joystick_list, devinfo), devinfo->name);
 
 	// turn off deadzone; we do our own calculations
 	result = dinput_set_dword_property(devinfo->dinput.device, DIPROP_DEADZONE, 0, DIPH_DEVICE, 0);
 	if (result != DI_OK)
-		mame_printf_warning("DirectInput: Unable to reset deadzone for joystick %d (%s)\n", generic_device_index(joystick_list, devinfo), devinfo->name);
+		mame_printf_warning(_WINDOWS("DirectInput: Unable to reset deadzone for joystick %d (%s)\n"), generic_device_index(joystick_list, devinfo), devinfo->name);
 
 	// turn off saturation; we do our own calculations
 	result = dinput_set_dword_property(devinfo->dinput.device, DIPROP_SATURATION, 0, DIPH_DEVICE, 10000);
 	if (result != DI_OK)
-		mame_printf_warning("DirectInput: Unable to reset saturation for joystick %d (%s)\n", generic_device_index(joystick_list, devinfo), devinfo->name);
+		mame_printf_warning(_WINDOWS("DirectInput: Unable to reset saturation for joystick %d (%s)\n"), generic_device_index(joystick_list, devinfo), devinfo->name);
 
 	// cap the number of axes, POVs, and buttons based on the format
 	devinfo->dinput.caps.dwAxes = MIN(devinfo->dinput.caps.dwAxes, 8);
 	devinfo->dinput.caps.dwPOVs = MIN(devinfo->dinput.caps.dwPOVs, 4);
 	devinfo->dinput.caps.dwButtons = MIN(devinfo->dinput.caps.dwButtons, 128);
+
+#ifndef JOYSTICK_ID
+	assign_joystick_to_player(machine, devinfo);
+#endif /* JOYSTICK_ID */
+
+exit:
+	return DIENUM_CONTINUE;
+}
+
+static void assign_joystick_to_player(running_machine *machine, device_info *devinfo)
+{
+	int axisnum, axiscount, povnum, butnum;
 
 	// add the device
 	devinfo->device = input_device_add(machine, DEVICE_CLASS_JOYSTICK, devinfo->name, devinfo);
@@ -1547,6 +1644,7 @@ static BOOL CALLBACK dinput_joystick_enum(LPCDIDEVICEINSTANCE instance, LPVOID r
 	{
 		DIPROPRANGE dipr;
 		char *name;
+		HRESULT result;
 
 		// fetch the range of this axis
 		dipr.diph.dwSize = sizeof(dipr);
@@ -1601,9 +1699,6 @@ static BOOL CALLBACK dinput_joystick_enum(LPCDIDEVICEINSTANCE instance, LPVOID r
 		input_device_item_add(devinfo->device, name, &devinfo->joystick.state.rgbButtons[butnum], (butnum < 16) ? (input_item_id)(ITEM_ID_BUTTON1 + butnum) : ITEM_ID_OTHER_SWITCH, generic_button_get_state);
 		osd_free(name);
 	}
-
-exit:
-	return DIENUM_CONTINUE;
 }
 
 
@@ -1685,7 +1780,7 @@ static void rawinput_init(running_machine *machine)
 	get_rawinput_data = (get_rawinput_data_ptr)GetProcAddress(user32, "GetRawInputData");
 	if (register_rawinput_devices == NULL || get_rawinput_device_list == NULL || get_rawinput_device_info == NULL || get_rawinput_data == NULL)
 		goto error;
-	mame_printf_verbose("RawInput: APIs detected\n");
+	mame_printf_verbose(_WINDOWS("RawInput: APIs detected\n"));
 
 	// get the number of devices, allocate a device list, and fetch it
 	if ((*get_rawinput_device_list)(NULL, &device_count, sizeof(*devlist)) != 0)

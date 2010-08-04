@@ -295,7 +295,18 @@ OSDOBJS += \
 	$(WINOBJ)/debugwin.o
 
 # add a stub resource file
-RESFILE = $(WINOBJ)/mame.res
+CLIRESFILE = $(WINOBJ)/mame.res
+VERSIONRES = $(WINOBJ)/version.res
+
+
+
+#-------------------------------------------------
+# For building Scale Effects include scale.mak
+#-------------------------------------------------
+
+ifneq ($(USE_SCALE_EFFECTS),)
+include $(SRC)/osd/windows/scale/scale.mak
+endif
 
 
 
@@ -304,6 +315,8 @@ RESFILE = $(WINOBJ)/mame.res
 #-------------------------------------------------
 
 $(LIBOCORE): $(OSDCOREOBJS)
+
+$(LIBOCORE_NOMAIN): $(OSDCOREOBJS:$(WINOBJ)/main.o=)
 
 $(LIBOSD): $(OSDOBJS)
 
@@ -339,8 +352,19 @@ $(WINOBJ)/%.res: $(WINSRC)/%.rc | $(OSPREBUILD)
 # rules for resource file
 #-------------------------------------------------
 
-$(RESFILE): $(WINSRC)/mame.rc $(WINOBJ)/mamevers.rc
+$(CLIRESFILE): $(WINSRC)/mame.rc $(WINOBJ)/mamevers.rc
+$(VERSIONRES): $(WINOBJ)/mamevers.rc
 
 $(WINOBJ)/mamevers.rc: $(BUILDOUT)/verinfo$(BUILD_EXE) $(SRC)/version.c
 	@echo Emitting $@...
 	@"$(BUILDOUT)/verinfo$(BUILD_EXE)" -b windows $(SRC)/version.c > $@
+
+
+
+#-------------------------------------------------
+# For building UI include ui.mak
+#-------------------------------------------------
+
+ifdef WINUI
+include $(SRC)/osd/winui/winui.mak
+endif

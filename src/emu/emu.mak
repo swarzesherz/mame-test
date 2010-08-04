@@ -108,7 +108,23 @@ EMUOBJS = \
 	$(EMUOBJ)/debug/dvtext.o \
 	$(EMUOBJ)/debug/express.o \
 	$(EMUOBJ)/debug/textbuf.o \
-	$(EMUOBJ)/debugint/debugint.o
+	$(EMUOBJ)/debugint/debugint.o \
+	$(EMUOBJ)/uilang.o
+
+ifdef USE_CMD_LIST
+EMUOBJS += \
+	$(EMUOBJ)/cmddata.o
+endif
+
+ifdef USE_IPS
+EMUOBJS += \
+	$(EMUOBJ)/ips.o
+endif
+
+ifdef USE_HISCORE
+EMUOBJS += \
+	$(EMUOBJ)/hiscore.o
+endif
 
 ifdef PROFILER
 EMUOBJS += \
@@ -257,7 +273,7 @@ $(LIBSOUND): $(SOUNDOBJS)
 # additional dependencies
 #-------------------------------------------------
 
-$(EMUOBJ)/rendfont.o:	$(EMUOBJ)/uismall.fh
+$(EMUOBJ)/rendfont.o:		$(EMUOBJ)/uismall11.fh $(EMUOBJ)/uismall14.fh $(EMUOBJ)/uicmd11.fh $(EMUOBJ)/uicmd14.fh
 
 $(EMUOBJ)/video.o:	$(EMUSRC)/rendersw.c
 $(EMUVIDEO)/v9938.o:	$(EMUSRC)/video/v9938mod.c

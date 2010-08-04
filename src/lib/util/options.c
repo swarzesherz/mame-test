@@ -42,6 +42,7 @@
 #include <ctype.h>
 #include "options.h"
 #include "astring.h"
+#include "uilang.h"
 
 
 
@@ -576,7 +577,7 @@ int options_parse_ini_file(core_options *opts, core_file *inifile, int priority)
 			message(opts, OPTMSG_WARNING, "Warning: unknown option in INI: %s\n", optionname);
 			continue;
 		}
-		if ((data->flags & (OPTION_DEPRECATED | OPTION_INTERNAL)) != 0)
+		if ((data->flags & OPTION_DEPRECATED) != 0)
 			continue;
 
 		/* allocate a new copy of data for this */
@@ -590,6 +591,23 @@ int options_parse_ini_file(core_options *opts, core_file *inifile, int priority)
 /***************************************************************************
     OPTIONS OUTPUT
 ***************************************************************************/
+
+/*-------------------------------------------------
+    translate_description - translate description
+    by UI_MSG_MAME or UI_MSG_OSD0
+-------------------------------------------------*/
+
+static const char *translate_description(const options_data *data)
+{
+	const char *desc = _(data->description);
+
+	if (desc == data->description)
+		return lang_message(UI_MSG_OSD0, desc);
+
+	return desc;
+}
+
+
 
 /*-------------------------------------------------
     options_output_diff_ini_file - output the diff
@@ -610,7 +628,7 @@ void options_output_diff_ini_file(core_options *opts, core_options *baseopts, co
 	{
 		/* header: record description */
 		if ((data->flags & OPTION_HEADER) != 0)
-			last_header = data->description;
+			last_header = translate_description(data);
 
 		/* otherwise, output entries for all non-deprecated and non-command items (if not in baseopts) */
 		else if ((data->flags & (OPTION_DEPRECATED | OPTION_INTERNAL | OPTION_COMMAND)) == 0)
@@ -696,11 +714,11 @@ void options_output_help(core_options *opts, void (*output)(const char *))
 	{
 		/* header: just print */
 		if ((data->flags & OPTION_HEADER) != 0)
-			output_printf(output, "\n#\n# %s\n#\n", data->description);
+			output_printf(output, "\n#\n# %s\n#\n", translate_description(data));
 
 		/* otherwise, output entries for all non-deprecated items */
 		else if ((data->flags & (OPTION_DEPRECATED | OPTION_INTERNAL)) == 0 && data->description != NULL)
-			output_printf(output, "-%-20s%s\n", astring_c(data->links[0].name), data->description);
+			output_printf(output, "-%-20s%s\n", astring_c(data->links[0].name), translate_description(data));
 	}
 }
 
@@ -843,6 +861,8 @@ UINT32 options_get_seqid(core_options *opts, const char *name)
 void options_set_string(core_options *opts, const char *name, const char *value, int priority)
 {
 	options_data *data = find_entry_data(opts, name, FALSE);
+	if (value == NULL)
+		value = "";
 	update_data(opts, data, value, priority);
 }
 
@@ -1144,7 +1164,7 @@ static void message(core_options *opts, options_message msgtype, const char *for
 	if (opts->output[msgtype] != NULL)
 	{
 		va_start(argptr, format);
-		vsprintf(buf, format, argptr);
+		vsprintf(buf, _(format), argptr);
 		va_end(argptr);
 
 		(*opts->output[msgtype])(buf);
