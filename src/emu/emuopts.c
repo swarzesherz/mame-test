@@ -50,7 +50,6 @@ const options_entry mame_core_options[] =
 	{ "fontpath",                    ".",         0,                 "path to font files" },
 	{ "cheatpath",                   "cheat",     0,                 "path to cheat files" },
 	{ "crosshairpath",               "crosshair", 0,                 "path to crosshair files" },
-	{ "langpath",                    "lang",      0,                 "path to localized languages and datafiles" },
 #ifdef USE_IPS
 	{ "ipspath",                     "ips",       0,                 "path to ips files" },
 #endif /* USE_IPS */
@@ -219,14 +218,9 @@ const options_entry mame_core_options[] =
 	{ "button_lime",                 "190,190,190", 0,               "button color (lime)" },
 #endif /* UI_COLOR_DISPLAY */
 
-	/* language options */
-	{ NULL,                          NULL,        OPTION_HEADER,     "CORE LANGUAGE OPTIONS" },
-	{ "language;lang",               "auto",      0,                 "select translation language" },
-	{ "use_lang_list",               "1",         OPTION_BOOLEAN,    "enable/disable local language game list" },
-
 	/* image device options */
 	//mamep: stop adding device options until array drivers[] is ready
-	{ OPTION_ADDED_DEVICE_OPTIONS,	 "1",		  OPTION_BOOLEAN | OPTION_INTERNAL,	"image device-specific options have been added" },
+	{ OPTION_ADDED_DEVICE_OPTIONS,	 "0",		  OPTION_BOOLEAN | OPTION_INTERNAL,	"image device-specific options have been added" },
 	{ NULL }
 };
 

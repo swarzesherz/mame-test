@@ -56,7 +56,6 @@
 #define OPTION_FONTPATH				"fontpath"
 #define OPTION_CHEATPATH			"cheatpath"
 #define OPTION_CROSSHAIRPATH		"crosshairpath"
-#define OPTION_LANGPATH				"langpath"
 #ifdef USE_IPS
 #define OPTION_IPSPATH  			"ipspath"
 #endif /* USE_IPS */
@@ -206,10 +205,6 @@
 #define OPTION_BUTTON_NAVY			"button_navy"
 #define OPTION_BUTTON_LIME			"button_lime"
 #endif /* UI_COLOR_DISPLAY */
-
-/* core language options */
-#define OPTION_LANGUAGE				"language"
-#define OPTION_USE_LANG_LIST			"use_lang_list"
 
 /* image device options */
 #define OPTION_ADDED_DEVICE_OPTIONS	"added_device_options"

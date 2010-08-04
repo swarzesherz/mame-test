@@ -557,7 +557,7 @@ INLINE const char *code_to_string(const code_string_table *table, UINT32 code)
 	/* find a matching code, or  */
 	for ( ; table->code != ~0; table++)
 		if (table->code == code)
-			return _(table->string);
+			return (table->string);
 
 	/* return the default string */
 	return table->string;
@@ -615,9 +615,9 @@ void input_init(running_machine *machine)
 	if (state->joystick_map_default[0] == 0 || strcmp(state->joystick_map_default, "auto") == 0)
 		state->joystick_map_default = joystick_map_8way;
 	if (!joystick_map_parse(state->joystick_map_default, &map))
-		mame_printf_error(_("Invalid joystick map: %s\n"), state->joystick_map_default);
+		mame_printf_error("Invalid joystick map: %s\n", state->joystick_map_default);
 	else if (state->joystick_map_default != joystick_map_8way)
-		joystick_map_print(_("Input: Default joystick map"), state->joystick_map_default, &map);
+		joystick_map_print("Input: Default joystick map", state->joystick_map_default, &map);
 }
 
 
@@ -671,7 +671,7 @@ int input_device_set_joystick_map(running_machine *machine, int devindex, const 
 	{
 		startindex = 0;
 		stopindex = device_list[DEVICE_CLASS_JOYSTICK].count - 1;
-		joystick_map_print(_("Input: Changing default joystick map"), mapstring, &map);
+		joystick_map_print("Input: Changing default joystick map", mapstring, &map);
 	}
 
 	/* ignore if out of range */
@@ -782,7 +782,7 @@ input_device *input_device_add(running_machine *machine, input_device_class devc
 		device->lastmap = JOYSTICK_MAP_NEUTRAL;
 	}
 
-	mame_printf_verbose(_("Input: Adding %s #%d: %s\n"), code_to_string(devclass_string_table, devclass), devlist->count, device->name.cstr());
+	mame_printf_verbose("Input: Adding %s #%d: %s\n", code_to_string(devclass_string_table, devclass), devlist->count, device->name.cstr());
 	return device;
 }
 

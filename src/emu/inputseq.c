@@ -430,7 +430,7 @@ astring &input_seq_name(running_machine *machine, astring &string, const input_s
 
 	/* special case: empty */
 	if (copycodenum == 0)
-		return string.cpy((seq->code[0] == SEQCODE_END) ? _("None") : _("n/a"));
+		return string.cpy((seq->code[0] == SEQCODE_END) ? "None" : "n/a");
 
 	/* start with an empty buffer */
 	string.reset();
@@ -446,9 +446,9 @@ astring &input_seq_name(running_machine *machine, astring &string, const input_s
 
 		/* handle OR/NOT codes here */
 		if (code == SEQCODE_OR)
-			string.cat(_("or"));
+			string.cat("or");
 		else if (code == SEQCODE_NOT)
-			string.cat(_("not"));
+			string.cat("not");
 
 		/* otherwise, assume it is an input code and ask the input system to generate it */
 		else

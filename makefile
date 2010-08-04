@@ -525,7 +525,7 @@ CCOMFLAGS += -O$(OPTIMIZE)
 ifneq ($(OPTIMIZE),0)
 ifneq ($(TARGETOS),os2)
 ifndef NOWERROR
-CCOMFLAGS += -Wno-error -fno-strict-aliasing $(ARCHOPTS)
+CCOMFLAGS += -Werror -fno-strict-aliasing $(ARCHOPTS)
 else
 CCOMFLAGS += -fno-strict-aliasing $(ARCHOPTS)
 endif
@@ -539,7 +539,7 @@ CCOMFLAGS += \
 	-Wall \
 	-Wcast-align \
 	-Wundef \
-	-Wno-format-security \
+	-Wformat-security \
 	-Wwrite-strings \
 	-Wno-sign-compare
 
@@ -837,9 +837,10 @@ $(OBJ)/%.lh: $(SRC)/%.lay $(FILE2STR)
 	@echo Converting $<...
 	@$(FILE2STR) $< $@ layout_$(basename $(notdir $<))
 
-$(OBJ)/%.fh: $(OBJ)/%.bdc $(FILE2STR)
+$(OBJ)/%.fh: $(SRC)/%.png $(PNG2BDC) $(FILE2STR)
 	@echo Converting $<...
-	@$(FILE2STR) $< $@ font_$(basename $(notdir $<)) UINT8
+	@$(PNG2BDC) $< $(OBJ)/temp.bdc
+	@$(FILE2STR) $(OBJ)/temp.bdc $@ font_$(basename $(notdir $<)) UINT8
 
 $(OBJ)/%.a:
 	@echo Archiving $@...
@@ -851,34 +852,3 @@ $(OBJ)/%.o: $(SRC)/%.m | $(OSPREBUILD)
 	@echo Objective-C compiling $<...
 	$(CC) $(CDEFS) $(COBJFLAGS) $(CCOMFLAGS) -c $< -o $@
 endif
-
-
-
-#-------------------------------------------------
-# embedded font
-#-------------------------------------------------
-
-$(EMUOBJ)/uismall11.bdc: $(PNG2BDC) \
-		$(SRC)/emu/font/uismall.png \
-		$(SRC)/emu/font/cp1250.png
-	@echo Generating $@...
-	@$^ $@
-
-$(EMUOBJ)/uismall14.bdc: $(PNG2BDC) \
-		$(SRC)/emu/font/cp1252.png \
-		$(SRC)/emu/font/cp932.png \
-		$(SRC)/emu/font/cp932hw.png \
-		$(SRC)/emu/font/cp936.png \
-		$(SRC)/emu/font/cp949.png \
-		$(SRC)/emu/font/cp950.png
-	@echo Generating $@...
-	@$^ $@
-
-$(EMUOBJ)/uicmd11.bdc: $(PNG2BDC) $(SRC)/emu/font/cmd11.png
-	@echo Generating $@...
-	@$^ $@
-
-$(EMUOBJ)/uicmd14.bdc: $(PNG2BDC) $(SRC)/emu/font/cmd14.png
-	@echo Generating $@...
-	@$^ $@
-

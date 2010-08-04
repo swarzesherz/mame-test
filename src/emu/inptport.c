@@ -99,7 +99,6 @@
 #include "ui.h"
 #include "uiinput.h"
 #include "debug/debugcon.h"
-#include "rendfont.h"
 
 #include <ctype.h>
 #include <time.h>
@@ -1043,7 +1042,7 @@ time_t input_port_init(running_machine *machine, const input_port_token *tokens)
 	{
 		input_port_list_custom(machine->m_portlist, tokens, errorbuf, sizeof(errorbuf), TRUE);
 		if (errorbuf[0] != 0)
-			mame_printf_error(_("Input port errors:\n%s"), errorbuf);
+			mame_printf_error("Input port errors:\n%s", errorbuf);
 		init_port_state(machine);
 	}
 
@@ -1632,7 +1631,7 @@ input_port_value input_port_read(running_machine *machine, const char *tag)
 {
 	const input_port_config *port = machine->port(tag);
 	if (port == NULL)
-		fatalerror(_("Unable to locate input port '%s'"), tag);
+		fatalerror("Unable to locate input port '%s'", tag);;
 	return input_port_read_direct(port);
 }
 
@@ -1906,7 +1905,7 @@ const char *input_port_string_from_token(const input_port_token token)
 	for (index = 0; index < ARRAY_LENGTH(input_port_default_strings); index++)
 		if (input_port_default_strings[index].id == token.i)
 			return input_port_default_strings[index].string;
-	return _("(Unknown Default)");
+	return "(Unknown Default)";
 }
 
 
@@ -2224,7 +2223,7 @@ static void init_autoselect_devices(const ioport_list &portlist, int type1, int 
 		return;
 	}
 	else if (strcmp(stemp, "keyboard") != 0)
-		mame_printf_error(_("Invalid %s value %s; reverting to keyboard\n"), option, stemp);
+		mame_printf_error("Invalid %s value %s; reverting to keyboard\n", option, stemp);
 
 	/* only scan the list if we haven't already enabled this class of control */
 	if (portlist.first() != NULL && !input_device_class_enabled(portlist.first()->machine, autoenable))
@@ -2236,7 +2235,7 @@ static void init_autoselect_devices(const ioport_list &portlist, int type1, int 
 					(type2 != 0 && field->type == type2) ||
 					(type3 != 0 && field->type == type3))
 				{
-					mame_printf_verbose(_("Input: Autoenabling %s due to presence of a %s\n"), autostring, ananame);
+					mame_printf_verbose("Input: Autoenabling %s due to presence of a %s\n", autostring, ananame);
 					input_device_class_enable(port->machine, autoenable, TRUE);
 					break;
 				}
@@ -2360,7 +2359,7 @@ static analog_field_state *init_field_analog_state(const input_field_config *fie
 			break;
 
 		default:
-			fatalerror(_("Unknown analog port type -- don't know if it is absolute or not"));
+			fatalerror("Unknown analog port type -- don't know if it is absolute or not")
 			break;
 	}
 
@@ -2942,7 +2941,7 @@ static int frame_get_digital_field_state(const input_field_config *field, int mo
 	/* skip locked-out coin inputs */
 	if (curstate && field->type >= IPT_COIN1 && field->type <= IPT_COIN12 && coin_lockout_get_state(field->port->machine, field->type - IPT_COIN1) && options_get_bool(mame_options(), OPTION_COIN_LOCKOUT))
 	{
-		ui_popup_time(3, _("Coinlock disabled %s."), _(input_field_name(field)));
+		ui_popup_time(3, "Coinlock disabled %s.", input_field_name(field));
 		return FALSE;
 	}
 	return curstate;
@@ -3598,7 +3597,7 @@ static void port_config_detokenize(ioport_list &portlist, const input_port_token
 				break;
 
 			default:
-				error_buf_append(errorbuf, errorbuflen, _("Invalid token %d in input ports\n"), entrytype);
+				error_buf_append(errorbuf, errorbuflen, "Invalid token %d in input ports\n", entrytype);
 				break;
 		}
 	}
@@ -4477,7 +4476,7 @@ static UINT8 playback_read_uint8(running_machine *machine)
 	/* read the value; if we fail, end playback */
 	if (mame_fread(portdata->playback_file, &result, sizeof(result)) != sizeof(result))
 	{
-		playback_end(machine, _("End of file"));
+		playback_end(machine, "End of file");
 		return 0;
 	}
 
@@ -4503,7 +4502,7 @@ static UINT32 playback_read_uint32(running_machine *machine)
 	/* read the value; if we fail, end playback */
 	if (mame_fread(portdata->playback_file, &result, sizeof(result)) != sizeof(result))
 	{
-		playback_end(machine, _("End of file"));
+		playback_end(machine, "End of file");
 		return 0;
 	}
 
@@ -4529,7 +4528,7 @@ static UINT64 playback_read_uint64(running_machine *machine)
 	/* read the value; if we fail, end playback */
 	if (mame_fread(portdata->playback_file, &result, sizeof(result)) != sizeof(result))
 	{
-		playback_end(machine, _("End of file"));
+		playback_end(machine, "End of file");
 		return 0;
 	}
 
@@ -4565,23 +4564,23 @@ static time_t playback_init(running_machine *machine)
 
 	/* read the header and verify that it is a modern version; if not, print an error */
 	if (mame_fread(portdata->playback_file, header, sizeof(header)) != sizeof(header))
-		fatalerror(_("Input file is corrupt or invalid (missing header)"));
+		fatalerror("Input file is corrupt or invalid (missing header)");
 	if (memcmp(header, "MAMEINP\0", 8) != 0)
-		fatalerror(_("Input file invalid or in an older, unsupported format"));
+		fatalerror("Input file invalid or in an older, unsupported format");
 	if (header[0x10] != INP_HEADER_MAJVERSION)
-		fatalerror(_("Input file format version mismatch"));
+		fatalerror("Input file format version mismatch");
 
 	/* output info to console */
-	mame_printf_info(_("Input file: %s\n"), filename);
-	mame_printf_info(_("INP version %d.%d\n"), header[0x10], header[0x11]);
+	mame_printf_info("Input file: %s\n", filename);
+	mame_printf_info("INP version %d.%d\n", header[0x10], header[0x11]);
 	basetime = header[0x08] | (header[0x09] << 8) | (header[0x0a] << 16) | (header[0x0b] << 24) |
 				((UINT64)header[0x0c] << 32) | ((UINT64)header[0x0d] << 40) | ((UINT64)header[0x0e] << 48) | ((UINT64)header[0x0f] << 56);
-	mame_printf_info(_("Created %s"), ctime(&basetime));
-	mame_printf_info(_("Recorded using %s\n"), header + 0x20);
+	mame_printf_info("Created %s", ctime(&basetime));
+	mame_printf_info("Recorded using %s\n", header + 0x20);
 
 	/* verify the header against the current game */
 	if (memcmp(machine->gamedrv->name, header + 0x14, strlen(machine->gamedrv->name) + 1) != 0)
-		fatalerror(_("Input file is for " GAMENOUN " '%s', not for current " GAMENOUN " '%s'\n"), header + 0x14, machine->gamedrv->name);
+		fatalerror("Input file is for " GAMENOUN " '%s', not for current " GAMENOUN " '%s'\n", header + 0x14, machine->gamedrv->name);
 
 #ifdef INP_CAPTION
 	if (strlen(filename) > 4)
@@ -4627,12 +4626,12 @@ static void playback_end(running_machine *machine, const char *message)
 
 		/* pop a message */
 		if (message != NULL)
-			popmessage(_("Playback Ended\nReason: %s"), message);
+			popmessage("Playback Ended\nReason: %s", message);
 
 		/* display speed stats */
 		portdata->playback_accumulated_speed /= portdata->playback_accumulated_frames;
-		mame_printf_info(_("Total playback frames: %d\n"), (UINT32)portdata->playback_accumulated_frames);
-		mame_printf_info(_("Average recorded speed: %d%%\n"), (UINT32)((portdata->playback_accumulated_speed * 200 + 1) >> 21));
+		mame_printf_info("Total playback frames: %d\n", (UINT32)portdata->playback_accumulated_frames);
+		mame_printf_info("Average recorded speed: %d%%\n", (UINT32)((portdata->playback_accumulated_speed * 200 + 1) >> 21));
 	}
 }
 
@@ -4655,7 +4654,7 @@ static void playback_frame(running_machine *machine, attotime curtime)
 		readtime.seconds = playback_read_uint32(machine);
 		readtime.attoseconds = playback_read_uint64(machine);
 		if (attotime_compare(readtime, curtime) != 0)
-			playback_end(machine, _("Out of sync"));
+			playback_end(machine, "Out of sync");
 
 		/* then the speed */
 		portdata->playback_accumulated_speed += playback_read_uint32(machine);
@@ -4717,7 +4716,7 @@ static void record_write_uint8(running_machine *machine, UINT8 data)
 
 	/* read the value; if we fail, end playback */
 	if (mame_fwrite(portdata->record_file, &result, sizeof(result)) != sizeof(result))
-		record_end(machine, _("Out of space"));
+		record_end(machine, "Out of space");
 }
 
 
@@ -4737,7 +4736,7 @@ static void record_write_uint32(running_machine *machine, UINT32 data)
 
 	/* read the value; if we fail, end playback */
 	if (mame_fwrite(portdata->record_file, &result, sizeof(result)) != sizeof(result))
-		record_end(machine, _("Out of space"));
+		record_end(machine, "Out of space");
 }
 
 
@@ -4757,7 +4756,7 @@ static void record_write_uint64(running_machine *machine, UINT64 data)
 
 	/* read the value; if we fail, end playback */
 	if (mame_fwrite(portdata->record_file, &result, sizeof(result)) != sizeof(result))
-		record_end(machine, _("Out of space"));
+		record_end(machine, "Out of space");
 }
 
 
@@ -4825,7 +4824,7 @@ static void record_end(running_machine *machine, const char *message)
 
 		/* pop a message */
 		if (message != NULL)
-			popmessage(_("Recording Ended\nReason: %s"), message);
+			popmessage("Recording Ended\nReason: %s", message);
 	}
 }
 

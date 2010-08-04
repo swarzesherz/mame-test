@@ -19,9 +19,6 @@
 #define __INPTPORT_H__
 
 #include <time.h>
-#ifdef INP_CAPTION
-#include "render.h"
-#endif /* INP_CAPTION */
 
 
 

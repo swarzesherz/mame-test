@@ -799,8 +799,8 @@ void running_machine::call_notifiers(machine_notification which)
 void running_machine::handle_saveload()
 {
 	UINT32 openflags = (m_saveload_schedule == SLS_LOAD) ? OPEN_FLAG_READ : (OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS);
-	const char *opnamed = (m_saveload_schedule == SLS_LOAD) ? _("loaded") : _("saved");
-	const char *opname = (m_saveload_schedule == SLS_LOAD) ? _("load") : _("save");
+	const char *opnamed = (m_saveload_schedule == SLS_LOAD) ? "loaded" : "saved";
+	const char *opname = (m_saveload_schedule == SLS_LOAD) ? "load" : "save";
 	file_error filerr = FILERR_NONE;
 
 	// if no name, bail
@@ -814,7 +814,7 @@ void running_machine::handle_saveload()
 		// if more than a second has passed, we're probably screwed
 		if (attotime_sub(timer_get_time(this), m_saveload_schedule_time).seconds > 0)
 		{
-			popmessage(_("Unable to %s due to pending anonymous timers. See error.log for details."), opname);
+			popmessage("Unable to %s due to pending anonymous timers. See error.log for details.", opname);
 			goto cancel;
 		}
 		return;
@@ -834,30 +834,30 @@ void running_machine::handle_saveload()
 		switch (staterr)
 		{
 			case STATERR_ILLEGAL_REGISTRATIONS:
-				popmessage(_("Error: Unable to %s state due to illegal registrations. See error.log for details."), opname);
+				popmessage("Error: Unable to %s state due to illegal registrations. See error.log for details.", opname);
 				break;
 
 			case STATERR_INVALID_HEADER:
-				popmessage(_("Error: Unable to %s state due to an invalid header. Make sure the save state is correct for this game."), opname);
+				popmessage("Error: Unable to %s state due to an invalid header. Make sure the save state is correct for this game.", opname)
 				break;
 
 			case STATERR_READ_ERROR:
-				popmessage(_("Error: Unable to %s state due to a read error (file is likely corrupt)."), opname);
+				popmessage("Error: Unable to %s state due to a read error (file is likely corrupt).", opname);
 				break;
 
 			case STATERR_WRITE_ERROR:
-				popmessage(_("Error: Unable to %s state due to a write error. Verify there is enough disk space."), opname);
+				popmessage("Error: Unable to %s state due to a write error. Verify there is enough disk space.", opname);
 				break;
 
 			case STATERR_NONE:
 				if (!(m_game.flags & GAME_SUPPORTS_SAVE))
-					popmessage(_("State successfully %s.\nWarning: Save states are not officially supported for this game."), opnamed);
+					popmessage("State successfully %s.\nWarning: Save states are not officially supported for this game.", opnamed);
 				else
-					popmessage(_("State successfully %s."), opnamed);
+					popmessage("State successfully %s.", opnamed);
 				break;
 
 			default:
-				popmessage(_("Error: Unknown error during state %s."), opnamed);
+				popmessage("Error: Unknown error during state %s.", opnamed);
 				break;
 		}
 
@@ -867,7 +867,7 @@ void running_machine::handle_saveload()
 			osd_rmfile(fullname);
 	}
 	else
-		popmessage(_("Error: Failed to open file for %s operation."), opname);
+		popmessage("Error: Failed to open file for %s operation.", opname);
 
 	// unschedule the operation
 cancel:

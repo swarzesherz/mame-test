@@ -485,7 +485,7 @@ void cheat_set_global_enable(running_machine *machine, int enable)
 			for (cheat = cheatinfo->cheatlist; cheat != NULL; cheat = cheat->next)
 				if (cheat->state == SCRIPT_STATE_RUN)
 					cheat_execute_script(cheatinfo, cheat, SCRIPT_STATE_OFF);
-			popmessage(_("Cheats Disabled"));
+			popmessage("Cheats Disabled");
 			cheatinfo->disabled = TRUE;
 		}
 
@@ -497,7 +497,7 @@ void cheat_set_global_enable(running_machine *machine, int enable)
 			for (cheat = cheatinfo->cheatlist; cheat != NULL; cheat = cheat->next)
 				if (cheat->state == SCRIPT_STATE_RUN)
 					cheat_execute_script(cheatinfo, cheat, SCRIPT_STATE_ON);
-			popmessage(_("Cheats Enabled"));
+			popmessage("Cheats Enabled");
 		}
 	}
 }
@@ -575,7 +575,7 @@ void *cheat_get_next_menu_entry(running_machine *machine, void *previous, const 
 	else if (is_oneshot_cheat(cheat))
 	{
 		if (state != NULL)
-			*state = _("Set");
+			*state = "Set";
 		if (flags != NULL)
 			*flags = 0;
 	}
@@ -584,7 +584,7 @@ void *cheat_get_next_menu_entry(running_machine *machine, void *previous, const 
 	else if (is_onoff_cheat(cheat))
 	{
 		if (state != NULL)
-			*state = (cheat->state == SCRIPT_STATE_RUN) ? _("On") : _("Off");
+			*state = (cheat->state == SCRIPT_STATE_RUN) ? "On" : "Off";
 		if (flags != NULL)
 			*flags = cheat->state ? MENU_FLAG_LEFT_ARROW : MENU_FLAG_RIGHT_ARROW;
 	}
@@ -595,7 +595,7 @@ void *cheat_get_next_menu_entry(running_machine *machine, void *previous, const 
 		if (cheat->state == SCRIPT_STATE_OFF)
 		{
 			if (state != NULL)
-			*state = is_oneshot_parameter_cheat(cheat) ? _("Set") : _("Off");
+			*state = is_oneshot_parameter_cheat(cheat) ? "Set" : "Off";
 			if (flags != NULL)
 				*flags = MENU_FLAG_RIGHT_ARROW;
 		}
@@ -621,7 +621,7 @@ void *cheat_get_next_menu_entry(running_machine *machine, void *previous, const 
 		if (cheat->state == SCRIPT_STATE_OFF)
 		{
 			if (state != NULL)
-				*state = is_oneshot_parameter_cheat(cheat) ? _("Set") : _("Off");
+				*state = is_oneshot_parameter_cheat(cheat) ? "Set" : "Off";
 			if (flags != NULL)
 				*flags = MENU_FLAG_RIGHT_ARROW;
 		}
@@ -633,7 +633,7 @@ void *cheat_get_next_menu_entry(running_machine *machine, void *previous, const 
 				if (item->value == cheat->parameter->value)
 					break;
 			if (state != NULL)
-				*state = (item != NULL) ? item->text.cstr() : _("??Invalid??");
+				*state = (item != NULL) ? item->text.cstr() : "??Invalid??";
 			if (flags != NULL)
 			{
 				*flags = MENU_FLAG_LEFT_ARROW;
@@ -668,7 +668,7 @@ int cheat_activate(running_machine *machine, void *entry)
 	{
 		cheat_execute_script(cheatinfo, cheat, SCRIPT_STATE_ON);
 		changed = TRUE;
-		popmessage(_("Activated %s"), cheat->description.cstr());
+		popmessage("Activated %s", cheat->description.cstr());
 	}
 
 	/* if we have no run or off script, but we do have parameter and change scripts and it's not in the off state, it's a oneshot list or selectable value cheat */
@@ -677,9 +677,9 @@ int cheat_activate(running_machine *machine, void *entry)
 		cheat_execute_script(cheatinfo, cheat, SCRIPT_STATE_CHANGE);
 		changed = TRUE;
 		if (cheat->parameter->itemlist != NULL)
-			popmessage(_("Activated\n %s = %s"), cheat->description.cstr(), cheat->parameter->itemlist->curtext.cstr() );
+			popmessage("Activated\n %s = %s", cheat->description.cstr(), cheat->parameter->itemlist->curtext.cstr() );
 		else
-			popmessage(_("Activated\n %s = %d (0x%X)"), cheat->description.cstr(), (UINT32)cheat->parameter->value, (UINT32)cheat->parameter->value );
+			popmessage("Activated\n %s = %d (0x%X)", cheat->description.cstr(), (UINT32)cheat->parameter->value, (UINT32)cheat->parameter->value );
 	}
 
 	return changed;
@@ -1035,7 +1035,7 @@ static cheat_entry *cheat_list_load(running_machine *machine, const char *filena
 		cheat_entry *scannode;
 		int version;
 
-		mame_printf_verbose(_("Loading cheats file from %s\n"), mame_file_full_name(cheatfile).cstr());
+		mame_printf_verbose("Loading cheats file from %s\n", mame_file_full_name(cheatfile).cstr());
 
 		/* read the XML file into internal data structures */
 		memset(&options, 0, sizeof(options));
@@ -1079,7 +1079,7 @@ static cheat_entry *cheat_list_load(running_machine *machine, const char *filena
 				for (scannode = cheatlist; scannode != NULL; scannode = scannode->next)
 					if (scannode->description.cmp(curcheat->description) == 0)
 					{
-						mame_printf_verbose(_("Ignoring duplicate cheat '%s' from file %s\n"), curcheat->description.cstr(), mame_file_full_name(cheatfile).cstr());
+						mame_printf_verbose("Ignoring duplicate cheat '%s' from file %s\n", curcheat->description.cstr(), mame_file_full_name(cheatfile).cstr());
 						break;
 					}
 

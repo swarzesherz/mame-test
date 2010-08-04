@@ -120,11 +120,11 @@ int config_load_settings(running_machine *machine)
 		filerr = mame_fopen(SEARCHPATH_CTRLR, fname, OPEN_FLAG_READ, &file);
 
 		if (filerr != FILERR_NONE)
-			throw emu_fatalerror(_("Could not load controller file %s.cfg"), controller);
+			throw emu_fatalerror("Could not load controller file %s.cfg", controller);
 
 		/* load the XML */
 		if (!config_load_xml(machine, file, CONFIG_TYPE_CONTROLLER))
-			throw emu_fatalerror(_("Could not load controller file %s.cfg"), controller);
+			throw emu_fatalerror("Could not load controller file %s.cfg", controller);
 		mame_fclose(file);
 	}
 
