@@ -45,7 +45,6 @@
 #include "rendutil.h"
 #include "config.h"
 #include "xmlfile.h"
-#include <ctype.h>
 
 
 
@@ -1213,63 +1212,6 @@ const char *render_target_get_view_name(render_target *target, int viewindex)
 
 	return NULL;
 }
-
-
-/*-------------------------------------------------
-    render_target_get_translated_view_name - return the
-    localized name of the indexed view
--------------------------------------------------*/
-
-const char *render_target_get_translated_view_name(render_target *target, int viewindex)
-{
-	const char *s = render_target_get_view_name(target, viewindex);
-	const char *idx[8];
-	const char **pp;
-	astring temp, res;
-
-	if (!s)
-		return NULL;
-
-	pp = idx;
-	while (*s)
-	{
-		if (isdigit(*s))
-		{
-			*pp++ = s;
-
-			temp.cat("%");
-			temp.cat("d");
-
-			for (s++; *s; s++)
-				if (!isdigit(*s))
-					break;
-		}
-		else
-			temp.cat(s++, 1);
-	}
-
-	s = _(temp);
-
-	pp = idx;
-	while (*s)
-	{
-		if (s[0] == '%' && s[1] == 'd')
-		{
-			s += 2;
-
-			while (isdigit(**pp))
-				res.cat((*pp)++, 1);
-			pp++;
-		}
-		else
-			res.cat(s++, 1);
-	}
-
-	s = mame_strdup(res);
-
-	return s;
-}
-
 
 /*-------------------------------------------------
     render_target_get_view_screens - return a

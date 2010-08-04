@@ -26,11 +26,7 @@ INT32 render_font_get_pixel_height(render_font *font);
 render_texture *render_font_get_char_texture_and_bounds(render_font *font, float height, float aspect, unicode_char ch, render_bounds *bounds);
 void render_font_get_scaled_bitmap_and_bounds(render_font *font, bitmap_t *dest, float height, float aspect, unicode_char chnum, rectangle *bounds);
 float render_font_get_char_width(render_font *font, float height, float aspect, unicode_char ch);
-//mamep: to render as fixed-width font
-float render_font_get_char_width_no_margin(render_font *font, float height, float aspect, unicode_char ch);
 float render_font_get_string_width(render_font *font, float height, float aspect, const char *string);
 float render_font_get_utf8string_width(render_font *font, float height, float aspect, const char *utf8string);
-
-void convert_command_glyph(char *s, int buflen);
 
 #endif	/* __RENDFONT_H__ */
